@@ -12,8 +12,10 @@ type VPN struct {
 	// config
 	listenTCPPort int
 	maxTunnels    int
+	
 	// server decryption key
 	k *rsa.PrivateKey
+	
 	// map of cient id to encryption key
 	kstore map[string]*rsa.PublicKey
 }
