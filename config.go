@@ -1,5 +1,7 @@
 package main
 
+import "errors"
+
 // Config represents data required to
 // configure the VPN server
 type Config struct {
@@ -8,6 +10,11 @@ type Config struct {
 }
 
 func (c *Config) validate() error {
-	// TODO
+	if c.ListenTCPPort < 0 || c.ListenTCPPort > 65535 {
+		return errors.New("invalid tcp port")
+	}
+	if c.MaxTunnels < 0 {
+		return errors.New("invalid max tunnels number")
+	}
 	return nil
 }
