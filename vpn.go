@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"crypto/rsa"
 	"fmt"
+	"io"
 	"log"
 	"net"
 )
@@ -16,7 +18,7 @@ type VPN struct {
 	// server decryption key
 	k *rsa.PrivateKey
 
-	// map of cient id to encryption key
+	// map of encryption keys (indexed by hash)
 	kstore map[string]*rsa.PublicKey
 }
 
@@ -59,6 +61,9 @@ func (v *VPN) Start() error {
 // and proceeds to handle encrypted requests
 func (v *VPN) handleConn(conn net.Conn) {
 	defer conn.Close()
+
+	var buf bytes.Buffer
+	io.Copy(&buf, conn)
 	// todo - receive client public key
 	// todo - send server public key
 	// todo - receive encrypted KACK (allow up to 10 seconds)
