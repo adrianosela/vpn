@@ -5,6 +5,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"time"
 )
@@ -27,6 +28,7 @@ func NewClient(host string, port int) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("could not establish tcp connection to vpn server: %s", err)
 	}
+	log.Printf("[client] established tcp connection with %s:%d", host, port)
 	// generate client key
 	k, err := generateRSAKey(4096)
 	if err != nil {
@@ -37,12 +39,23 @@ func NewClient(host string, port int) (*Client, error) {
 	if _, err := connection.Write(pubBytes); err != nil {
 		return nil, fmt.Errorf("could not send client key to vpn: %s", err)
 	}
+	log.Println("[client] sent client key to server")
+	time.Sleep(time.Second * 5)
 	// read vpn key (pub encryption key)
 	var buf bytes.Buffer
 	io.Copy(&buf, connection)
 	vk, err := decodePubKeyPEM(buf.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("could not receive vpn key over tcp conn: %s", err)
+	}
+	log.Println("[client] vpn server key received")
+	// encrypt and send KEY ACK message to server to complete handshake
+	msg, err := encryptMessage([]byte("KEY ACK"), vk)
+	if err != nil {
+		return nil, fmt.Errorf("could not encrypt KEY ACK message: %s", err)
+	}
+	if _, err = connection.Write(msg); err != nil {
+		return nil, fmt.Errorf("could not send KEY ACK message: %s", err)
 	}
 	// return secure client
 	return &Client{
