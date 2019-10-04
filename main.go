@@ -40,16 +40,7 @@ func serverMain() {
 }
 
 func clientMain() {
-	client, err := NewClient(*host, *port)
-	if err != nil {
-		log.Fatalf("could not get vpn client: %s", err)
-	}
-	defer client.close()
+	client := NewClient(*host, *port)
 	client.setMasterSecret(mockPassphrase)
-	// dispatch reader and writer
-	go client.reader()
-	go client.writer()
-	for {
-
-	}
+	client.start()
 }

@@ -53,10 +53,12 @@ func (v *VPN) Start() error {
 func (v *VPN) writer(conn net.Conn) {
 	defer conn.Close()
 	for {
-		if err := v.writeMessage(conn, "I'm Alice"); err != nil {
+		msg := "I'm Alice"
+		err := writeToConn(conn, msg, v.sharedSecret)
+		if err != nil {
 			log.Printf("[vpn] failed to send message to client: %s", err)
-			return
 		}
+		log.Printf("[vpn] sent message: %s", msg)
 		time.Sleep(time.Second * 10)
 	}
 }
@@ -74,13 +76,4 @@ func (v *VPN) reader(conn net.Conn) {
 		}
 		log.Printf("[vpn] received message: %s", msg)
 	}
-}
-
-func (v *VPN) writeMessage(conn net.Conn, msg string) error {
-	err := writeToConn(conn, msg, v.sharedSecret)
-	if err != nil {
-		return err
-	}
-	log.Printf("[vpn] sent message: %s", msg)
-	return nil
 }
