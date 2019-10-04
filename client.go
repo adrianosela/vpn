@@ -9,8 +9,11 @@ import (
 
 // Client of the VPN service
 type Client struct {
-	vpnHost string
-	vpnPort int
+	sync.Mutex // inherit lock behavior
+	vpnHost    string
+	vpnPort    int
+
+	masterSecret string
 
 	conn net.Conn
 }
@@ -31,6 +34,12 @@ func NewClient(host string, port int) (*Client, error) {
 		vpnPort: port,
 		conn:    connection,
 	}, nil
+}
+
+func (c *Client) SetMasterSecret(s string) {
+	c.Lock()
+	defer c.Unlock()
+	c.masterSecret = s
 }
 
 func (c *Client) writeMessage(msg string) error {
