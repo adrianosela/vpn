@@ -8,12 +8,11 @@ import (
 	"time"
 )
 
-// VPN represents
+// VPN represents the server in the program
 type VPN struct {
 	listenTCPPort int
 	uiPort        int
-
-	masterSecret string
+	masterSecret  string
 }
 
 // NewVPN returns a new uninitialized VPN

@@ -16,14 +16,11 @@ import (
 
 // Client of the VPN service
 type Client struct {
-	vpnHost string
-	vpnPort int
-
-	uiPort int
-
+	vpnHost      string
+	vpnPort      int
+	uiPort       int
 	masterSecret string
-
-	conn net.Conn
+	conn         net.Conn
 }
 
 // NewClient establishes a secure connection to the VPN at host:port
@@ -41,6 +38,8 @@ func (c *Client) start() error {
 	if err != nil {
 		return fmt.Errorf("could not establish tcp connection to vpn server: %s", err)
 	}
+
+	// schedule conn close and add to client
 	defer conn.Close()
 	c.conn = conn
 	log.Printf("[client] established tcp connection with %s:%d", c.vpnHost, c.vpnPort)
