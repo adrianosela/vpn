@@ -5,10 +5,13 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 // Client of the VPN service
@@ -39,11 +42,16 @@ func (c *Client) start() error {
 	c.conn = conn
 	log.Printf("[client] established tcp connection with %s:%d", c.vpnHost, c.vpnPort)
 
-	// dispatch reader and writer
+	// dispatch tcp conn reader and writer threads
 	go c.reader()
 	go c.writer()
 
-	// TODO: open browser console here (unless disabled)
+	// dispatch UI thread, wait a sec, open browser
+	go c.ui()
+	time.Sleep(time.Second * 1)
+	if err = openbrowser("http://localhost:8080/"); err != nil {
+		log.Fatal("[client] could not open browser for GUI")
+	}
 
 	// catch shutdown
 	signalCatch := make(chan os.Signal, 1)
@@ -83,5 +91,15 @@ func (c *Client) reader() {
 			return
 		}
 		log.Printf("[client] received message: %s", msg)
+	}
+}
+
+func (c *Client) ui() {
+	rtr := mux.NewRouter()
+	rtr.Methods(http.MethodGet).Path("/").HandlerFunc(serveHTML)
+	rtr.Methods(http.MethodGet).Path("/ws").HandlerFunc(serveWS)
+
+	if err := http.ListenAndServe(":8080", rtr); err != nil {
+		log.Fatal(err)
 	}
 }

@@ -1,32 +1,11 @@
 package main
 
 import (
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
-
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
+	"time"
 )
-
-type gui struct {
-	server *http.Server
-}
-
-func newGui() *gui {
-	rtr := mux.NewRouter()
-	rtr.Methods(http.MethodGet).Path("/").HandlerFunc(serveHTML)
-
-	return &gui{
-		server: &http.Server{
-			Addr:    ":80",
-			Handler: rtr,
-		},
-	}
-}
-
-func (g *gui) start() error {
-	return g.server.ListenAndServe()
-}
 
 // serveHTML serves the "homepage"
 func serveHTML(w http.ResponseWriter, r *http.Request) { w.Write([]byte(indexHTML)) }
@@ -41,7 +20,8 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// TODO
-	wsConn.Close()
+	time.Sleep(time.Second * 10)
+	defer wsConn.Close()
 }
 
 const indexHTML = `
