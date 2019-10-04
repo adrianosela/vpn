@@ -19,16 +19,19 @@ type Client struct {
 	vpnHost string
 	vpnPort int
 
+	uiPort int
+
 	masterSecret string
 
 	conn net.Conn
 }
 
 // NewClient establishes a secure connection to the VPN at host:port
-func NewClient(host string, port int) *Client {
+func NewClient(host string, port, uiPort int) *Client {
 	return &Client{
 		vpnHost: host,
 		vpnPort: port,
+		uiPort:  uiPort,
 	}
 }
 
@@ -49,7 +52,7 @@ func (c *Client) start() error {
 	// dispatch UI thread, wait a sec, open browser
 	go c.ui()
 	time.Sleep(time.Second * 1)
-	if err = openbrowser("http://localhost:8080/"); err != nil {
+	if err = openbrowser(fmt.Sprintf("%s:%d/", "http://localhost", c.uiPort)); err != nil {
 		log.Fatal("[client] could not open browser for GUI")
 	}
 
@@ -98,8 +101,7 @@ func (c *Client) ui() {
 	rtr := mux.NewRouter()
 	rtr.Methods(http.MethodGet).Path("/").HandlerFunc(serveHTML)
 	rtr.Methods(http.MethodGet).Path("/ws").HandlerFunc(serveWS)
-
-	if err := http.ListenAndServe(":8080", rtr); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", c.uiPort), rtr); err != nil {
 		log.Fatal(err)
 	}
 }

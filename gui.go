@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
-	"time"
+
+	"github.com/gorilla/websocket"
 )
 
 // serveHTML serves the "homepage"
@@ -16,12 +16,15 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
 	wsConn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
-		return
+		log.Fatal(err)
 	}
+	// prompt for passphrase
+	prompt := []byte("Welcome! To establish an initial secure, enter the passphrase:")
+	if err := wsConn.WriteMessage(websocket.TextMessage, prompt); err != nil {
+		log.Fatal(err)
+	}
+
 	// TODO
-	time.Sleep(time.Second * 10)
-	defer wsConn.Close()
 }
 
 const indexHTML = `

@@ -12,6 +12,7 @@ var (
 	clientMode = flag.Bool("c", false, "run application in client mode")
 	host       = flag.String("host", "localhost", "vpn host to use")
 	port       = flag.Int("port", 80, "tcp port for vpn")
+	uiport     = flag.Int("uiport", 8080, "tcp port for UI's http listener")
 	tunnels    = flag.Int("tunnels", 25, "maximum simultaneous vpn clients")
 )
 
@@ -40,7 +41,7 @@ func serverMain() {
 }
 
 func clientMain() {
-	client := NewClient(*host, *port)
+	client := NewClient(*host, *port, *uiport)
 	client.setMasterSecret(mockPassphrase)
 	client.start()
 }
