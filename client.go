@@ -50,11 +50,11 @@ func (c *Client) start() error {
 	go c.writer()
 
 	// dispatch UI thread, wait a sec, open browser
-	go c.ui()
-	time.Sleep(time.Second * 1)
-	if err = openbrowser(fmt.Sprintf("%s:%d/", "http://localhost", c.uiPort)); err != nil {
-		log.Fatal("[client] could not open browser for GUI")
-	}
+	// go c.ui()
+	// time.Sleep(time.Second * 1)
+	// if err = openbrowser(fmt.Sprintf("%s:%d/", "http://localhost", c.uiPort)); err != nil {
+	//	return fmt.Errorf("[client] could not open browser for GUI: %s", err)
+	// }
 
 	// catch shutdown
 	signalCatch := make(chan os.Signal, 1)
@@ -75,11 +75,11 @@ func (c *Client) writer() {
 		msg := "I'm Bob"
 		err := writeToConn(c.conn, msg, c.masterSecret)
 		if err != nil {
-			log.Printf("[client] failed to send message to client: %s", err)
+			log.Printf("[client] could not send message to vpn: %s", err)
 			return
 		}
 		log.Printf("[client] sent message: %s", msg)
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 1)
 	}
 }
 
@@ -88,9 +88,10 @@ func (c *Client) reader() {
 		msg, err := readFromConn(c.conn, c.masterSecret)
 		if err != nil {
 			if err == io.EOF {
-				continue
+				log.Printf("[client] connection terminated by server (%s) - dropping off", err)
+			} else {
+				log.Printf("[client] could not read from conn: %s", err)
 			}
-			log.Printf("[client] error reading from vpn: %s", err)
 			return
 		}
 		log.Printf("[client] received message: %s", msg)

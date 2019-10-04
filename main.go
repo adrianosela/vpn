@@ -6,7 +6,8 @@ import (
 
 var (
 	// injected at build-time
-	version string
+	version        string
+	mockPassphrase = "<< secret passphrase >>"
 
 	host = flag.String("host", "localhost", "vpn host to use")
 	port = flag.Int("port", 80, "tcp port for vpn")
@@ -27,12 +28,12 @@ func main() {
 
 func serverMain() {
 	vpn := NewVPN(*port, *uiport)
-	vpn.setMasterSecret(mockPassphrase)
+	vpn.setMasterSecret(mockPassphrase) // FIXME: do this in UI
 	vpn.start()
 }
 
 func clientMain() {
 	client := NewClient(*host, *port, *uiport)
-	client.setMasterSecret(mockPassphrase)
+	client.setMasterSecret(mockPassphrase) // FIXME: do this in UI
 	client.start()
 }

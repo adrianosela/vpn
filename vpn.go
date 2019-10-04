@@ -45,6 +45,7 @@ func (v *VPN) start() error {
 			log.Printf("[vpn] failed to accept tcp connection: %s", err)
 			continue
 		}
+		defer conn.Close()
 		log.Println("[vpn] accepted new tcp connection")
 		// dispatch new reader and writer
 		go v.writer(conn)
@@ -53,27 +54,27 @@ func (v *VPN) start() error {
 }
 
 func (v *VPN) writer(conn net.Conn) {
-	defer conn.Close()
 	for {
 		msg := "I'm Alice"
 		err := writeToConn(conn, msg, v.masterSecret)
 		if err != nil {
-			log.Printf("[vpn] failed to send message to client: %s", err)
+			log.Printf("[vpn] could not send message to client: %s", err)
+			return
 		}
 		log.Printf("[vpn] sent message: %s", msg)
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 1)
 	}
 }
 
 func (v *VPN) reader(conn net.Conn) {
-	defer conn.Close()
 	for {
 		msg, err := readFromConn(conn, v.masterSecret)
 		if err != nil {
 			if err == io.EOF {
-				continue
+				log.Printf("[vpn] connection finished (%s) - dropping client", err)
+			} else {
+				log.Printf("[vpn] could not read from conn: %s", err)
 			}
-			log.Printf("[vpn] error reading from client: %s", err)
 			return
 		}
 		log.Printf("[vpn] received message: %s", msg)
