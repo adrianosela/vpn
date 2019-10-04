@@ -19,12 +19,14 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	// prompt for passphrase
-	prompt := []byte("Welcome! To establish an initial secure, enter the passphrase:")
+	prompt := []byte("Welcome! To establish an initial secure channel, enter the passphrase:")
 	if err := wsConn.WriteMessage(websocket.TextMessage, prompt); err != nil {
 		log.Fatal(err)
 	}
 
-	// TODO
+	for {
+		/* INF */
+	}
 }
 
 const indexHTML = `
