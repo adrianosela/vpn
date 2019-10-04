@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"log"
-	"time"
 )
 
 var (
@@ -30,6 +29,7 @@ func serverMain() {
 	vpn, err := NewVPN(&Config{
 		ListenTCPPort: *port,
 		MaxTunnels:    *tunnels,
+		SharedSecret:  mockPassphrase,
 	})
 	if err != nil {
 		log.Fatalf("could not get new vpn: %s", err)
@@ -44,9 +44,12 @@ func clientMain() {
 	if err != nil {
 		log.Fatalf("could not get vpn client: %s", err)
 	}
+	defer client.close()
+	client.setMasterSecret(mockPassphrase)
+	// dispatch reader and writer
+	go client.reader()
+	go client.writer()
 	for {
-		log.Println("sent mock msg")
-		client.writeMessage("mock secret message")
-		time.Sleep(time.Minute * 1)
+
 	}
 }

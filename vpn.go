@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"time"
 )
 
 // VPN represents
@@ -38,17 +40,47 @@ func (v *VPN) Start() error {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			log.Printf("failed to accept tcp connection: %s", err)
+			log.Printf("[vpn] failed to accept tcp connection: %s", err)
 			continue
 		}
 		log.Println("[vpn] accepted new tcp connection")
-		go v.handleConn(conn)
+		// dispatch new reader and writer
+		go v.writer(conn)
+		go v.reader(conn)
 	}
 }
 
-// handleConn establishes a secure communication channel
-// and proceeds to handle encrypted requests
-func (v *VPN) handleConn(conn net.Conn) {
+func (v *VPN) writer(conn net.Conn) {
 	defer conn.Close()
-	// TODO
+	for {
+		if err := v.writeMessage(conn, "I'm Alice"); err != nil {
+			log.Printf("[vpn] failed to send message to client: %s", err)
+			return
+		}
+		time.Sleep(time.Second * 10)
+	}
+}
+
+func (v *VPN) reader(conn net.Conn) {
+	defer conn.Close()
+	for {
+		msg, err := readFromConn(conn, v.sharedSecret)
+		if err != nil {
+			if err == io.EOF {
+				continue
+			}
+			log.Printf("[vpn] error reading from client: %s", err)
+			return
+		}
+		log.Printf("[vpn] received message: %s", msg)
+	}
+}
+
+func (v *VPN) writeMessage(conn net.Conn, msg string) error {
+	err := writeToConn(conn, msg, v.sharedSecret)
+	if err != nil {
+		return err
+	}
+	log.Printf("[vpn] sent message: %s", msg)
+	return nil
 }
