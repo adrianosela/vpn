@@ -50,11 +50,11 @@ func (c *Client) start() error {
 	go c.writer()
 
 	// dispatch UI thread, wait a sec, open browser
-	// go c.ui()
-	// time.Sleep(time.Second * 1)
-	// if err = openbrowser(fmt.Sprintf("%s:%d/", "http://localhost", c.uiPort)); err != nil {
-	//	return fmt.Errorf("[client] could not open browser for GUI: %s", err)
-	// }
+	go c.ui()
+	time.Sleep(time.Second * 1)
+	if err = openbrowser(fmt.Sprintf("%s:%d/", "http://localhost", c.uiPort)); err != nil {
+		return fmt.Errorf("[client] could not open browser for GUI: %s", err)
+	}
 
 	// catch shutdown
 	signalCatch := make(chan os.Signal, 1)
