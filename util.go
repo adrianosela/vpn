@@ -1,9 +1,9 @@
 package main
 
 import (
-	"runtime"
-	"os/exec"
 	"errors"
+	"os/exec"
+	"runtime"
 )
 
 func openbrowser(url string) error {
