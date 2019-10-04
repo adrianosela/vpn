@@ -2,18 +2,17 @@ package main
 
 import (
 	"flag"
-	"log"
 )
 
 var (
 	// injected at build-time
 	version string
-	// flag arguments
+
+	host = flag.String("host", "localhost", "vpn host to use")
+	port = flag.Int("port", 80, "tcp port for vpn")
+
 	clientMode = flag.Bool("c", false, "run application in client mode")
-	host       = flag.String("host", "localhost", "vpn host to use")
-	port       = flag.Int("port", 80, "tcp port for vpn")
 	uiport     = flag.Int("uiport", 8080, "tcp port for UI's http listener")
-	tunnels    = flag.Int("tunnels", 25, "maximum simultaneous vpn clients")
 )
 
 func main() {
@@ -27,17 +26,9 @@ func main() {
 }
 
 func serverMain() {
-	vpn, err := NewVPN(&Config{
-		ListenTCPPort: *port,
-		MaxTunnels:    *tunnels,
-		SharedSecret:  mockPassphrase,
-	})
-	if err != nil {
-		log.Fatalf("could not get new vpn: %s", err)
-	}
-	if err = vpn.Start(); err != nil {
-		log.Fatalf("failed to start vpn: %s", err)
-	}
+	vpn := NewVPN(*port, *uiport)
+	vpn.setMasterSecret(mockPassphrase)
+	vpn.start()
 }
 
 func clientMain() {

@@ -10,26 +10,28 @@ import (
 
 // VPN represents
 type VPN struct {
-	// config
 	listenTCPPort int
-	maxTunnels    int
-	sharedSecret  string
+	uiPort        int
+
+	masterSecret string
 }
 
 // NewVPN returns a new uninitialized VPN
-func NewVPN(c *Config) (*VPN, error) {
-	if err := c.validate(); err != nil {
-		return nil, fmt.Errorf("invalid vpn configuration: %s", err)
-	}
+func NewVPN(tcpPort, uiPort int) *VPN {
 	return &VPN{
-		listenTCPPort: c.ListenTCPPort,
-		maxTunnels:    c.MaxTunnels,
-		sharedSecret:  c.SharedSecret,
-	}, nil
+		listenTCPPort: tcpPort,
+		uiPort:        uiPort,
+	}
 }
 
-// Start runs the vpn TCP service
-func (v *VPN) Start() error {
+// setMasterSecret sets the master secret on
+// passphrase on the server
+func (v *VPN) setMasterSecret(secret string) {
+	v.masterSecret = secret
+}
+
+// start runs the vpn TCP service
+func (v *VPN) start() error {
 	// establish tcp listener for the vpn service
 	ln, err := net.Listen("tcp", fmt.Sprintf(":%d", v.listenTCPPort))
 	if err != nil {
@@ -54,7 +56,7 @@ func (v *VPN) writer(conn net.Conn) {
 	defer conn.Close()
 	for {
 		msg := "I'm Alice"
-		err := writeToConn(conn, msg, v.sharedSecret)
+		err := writeToConn(conn, msg, v.masterSecret)
 		if err != nil {
 			log.Printf("[vpn] failed to send message to client: %s", err)
 		}
@@ -66,7 +68,7 @@ func (v *VPN) writer(conn net.Conn) {
 func (v *VPN) reader(conn net.Conn) {
 	defer conn.Close()
 	for {
-		msg, err := readFromConn(conn, v.sharedSecret)
+		msg, err := readFromConn(conn, v.masterSecret)
 		if err != nil {
 			if err == io.EOF {
 				continue
