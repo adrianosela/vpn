@@ -7,6 +7,8 @@ import "errors"
 type Config struct {
 	ListenTCPPort int
 	MaxTunnels    int
+
+	SharedSecret string
 }
 
 func (c *Config) validate() error {
@@ -15,6 +17,9 @@ func (c *Config) validate() error {
 	}
 	if c.MaxTunnels < 0 {
 		return errors.New("invalid max tunnels number")
+	}
+	if c.SharedSecret == "" {
+		return errors.New("empty shared secret value")
 	}
 	return nil
 }
