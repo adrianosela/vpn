@@ -57,8 +57,6 @@ func (c *uiConfig) serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go wsConnHandler(wsConn, c.wsRxChan, c.wsTxChan)
-	for {
-	}
 }
 
 func openbrowser(url string) error {
