@@ -45,31 +45,3 @@ func tcpWriter(conn net.Conn, tcpTxChan chan []byte) {
 		}
 	}
 }
-
-// func (v *VPN) writer(conn net.Conn) {
-// 	for {
-// 		msg := "I'm Alice"
-// 		err := writeToConn(conn, msg, v.masterSecret)
-// 		if err != nil {
-// 			log.Printf("[vpn] could not send message to client: %s", err)
-// 			return
-// 		}
-// 		log.Printf("[vpn] sent message: %s", msg)
-// 		time.Sleep(time.Second * 1)
-// 	}
-// }
-//
-// func (v *VPN) reader(conn net.Conn) {
-// 	for {
-// 		msg, err := readFromConn(conn, v.masterSecret)
-// 		if err != nil {
-// 			if err == io.EOF {
-// 				log.Printf("[vpn] connection finished (%s) - dropping client", err)
-// 			} else {
-// 				log.Printf("[vpn] could not read from conn: %s", err)
-// 			}
-// 			return
-// 		}
-// 		log.Printf("[vpn] received message: %s", msg)
-// 	}
-// }

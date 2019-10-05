@@ -49,11 +49,8 @@ func (c *uiConfig) serveWS(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 
+	go wsConnHandler(wsConn, c.wsRxChan, c.wsTxChan)
 	for {
-		select {
-		case msg := <-c.wsTxChan:
-			log.Printf("would have written %s\n", string(msg))
-		}
 	}
 }
 

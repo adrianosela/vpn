@@ -28,12 +28,10 @@ func main() {
 
 func serverMain() {
 	vpn := NewVPN(*port, *uiport)
-	vpn.setMasterSecret(mockPassphrase) // FIXME: do this in UI
 	vpn.start()
 }
 
 func clientMain() {
 	client := NewClient(*host, *port, *uiport)
-	client.setMasterSecret(mockPassphrase) // FIXME: do this in UI
 	client.start()
 }

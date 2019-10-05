@@ -12,11 +12,10 @@ import (
 
 // Client of the VPN service
 type Client struct {
-	vpnHost      string
-	vpnPort      int
-	uiPort       int
-	masterSecret string
-	conn         net.Conn
+	vpnHost string
+	vpnPort int
+	uiPort  int
+	conn    net.Conn
 }
 
 // NewClient establishes a secure connection to the VPN at host:port
@@ -40,9 +39,34 @@ func (c *Client) start() error {
 	c.conn = conn
 	log.Printf("[client] established tcp connection with %s:%d", c.vpnHost, c.vpnPort)
 
-	// dispatch tcp conn reader and writer threads
-	// go c.reader()
-	go c.writer()
+	// dispatch UI thread, wait a sec, open browser
+	uiconf := &uiConfig{
+		wsRxChan: make(chan []byte),
+		wsTxChan: make(chan []byte),
+		uiPort:   c.uiPort,
+	}
+	go ui(uiconf)
+
+	tcpRxChan := make(chan []byte)
+	tcpTxChan := make(chan []byte)
+
+	// this thread reads messages from the the TCP connection
+	// onto the TCP receive channel and writes messages from the
+	// TCP transmission channel to the TCP connection
+	// It also writes to the TCP connection from the TCP
+	go tcpConnHandler(conn, tcpRxChan, tcpTxChan)
+
+	// this thread reads messages from the TCP transmission
+	// channel, then b64 decodes and decrypts it, and finally
+	// forwards the plaintext to the websocket transmission channel
+	// (to then be displayed in the UI by the UI thread)
+	go decodeAndDecrypt(tcpRxChan, uiconf.wsTxChan)
+
+	// this thread reads messages from the websocket receive
+	// channel, then encrypts and b64 encodes it, and finally
+	// forwards the b64-encoded-ciphertext to the TCP
+	// transmission channel
+	go encryptAndEncode(uiconf.wsRxChan, tcpTxChan)
 
 	// catch shutdown
 	signalCatch := make(chan os.Signal, 1)
@@ -52,8 +76,4 @@ func (c *Client) start() error {
 		log.Printf("[client] shutdown signal received, terminating")
 		return nil
 	}
-}
-
-func (c *Client) setMasterSecret(s string) {
-	c.masterSecret = s
 }
