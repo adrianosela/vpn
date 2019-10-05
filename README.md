@@ -9,11 +9,11 @@ go build
 * run in server mode:
 
 ```
-./vpn
+./vpn -uiport $UIPORT
 ```
 
 * run in client mode:
 
 ```
-./vpn -c -host $HOST -port $PORT
+./vpn -c -host $HOST -port $PORT -uiport $UIPORT
 ```
