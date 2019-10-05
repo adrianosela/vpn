@@ -1,9 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os/exec"
+	"runtime"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -15,6 +18,10 @@ type uiConfig struct {
 
 	wsRxChan chan []byte
 	wsTxChan chan []byte
+}
+
+type uiData struct {
+	Data string `json:"data"` // message body
 }
 
 func ui(c *uiConfig) {
@@ -51,6 +58,19 @@ func (c *uiConfig) serveWS(w http.ResponseWriter, r *http.Request) {
 
 	go wsConnHandler(wsConn, c.wsRxChan, c.wsTxChan)
 	for {
+	}
+}
+
+func openbrowser(url string) error {
+	switch runtime.GOOS {
+	case "linux":
+		return exec.Command("xdg-open", url).Start()
+	case "windows":
+		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+	case "darwin":
+		return exec.Command("open", url).Start()
+	default:
+		return errors.New("unsupported platform")
 	}
 }
 

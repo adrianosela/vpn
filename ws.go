@@ -20,12 +20,6 @@ func wsConnHandler(conn *websocket.Conn, wsRxChan, wsTxChan chan []byte) {
 	go wsWriter(conn, wsTxChan)
 }
 
-type msgJSON struct {
-	From string `json:"from,omitempty"` // peer ID of sender
-	To   string `json:"to,omitempty"`   // peer ID of receiver
-	Data string `json:"data"`           // message body
-}
-
 // the wsReader reads from the websocket connection
 // onto the websocket receive channel
 func wsReader(conn *websocket.Conn, tcpRxChan chan []byte) {
@@ -34,19 +28,19 @@ func wsReader(conn *websocket.Conn, tcpRxChan chan []byte) {
 	conn.SetReadDeadline(time.Now().Add(pongWait))
 	conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		_, jsonMsg, err := conn.ReadMessage()
+		_, jsonInput, err := conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("WS connection was closed unexpectedly: %s", err)
 			}
 			break
 		}
-		var msg msgJSON
-		if err = json.Unmarshal(jsonMsg, &msg); err != nil {
+		var input uiData
+		if err = json.Unmarshal(jsonInput, &input); err != nil {
 			log.Printf("WS connection was closed unexpectedly: %s", err)
 			break
 		}
-		tcpRxChan <- []byte(msg.Data)
+		tcpRxChan <- []byte(input.Data)
 	}
 }
 
