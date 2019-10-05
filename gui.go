@@ -73,7 +73,7 @@ func (c *uiConfig) serveWS(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	// prompt for passphrase
-	prompt := []byte("Welcome! To establish an initial secure channel, enter the passphrase:")
+	prompt := []byte(fmt.Sprintf("Welcome! your passphrase was: %s", passphrase))
 	if err := wsConn.WriteMessage(websocket.TextMessage, prompt); err != nil {
 		log.Fatal(err)
 	}

@@ -31,7 +31,7 @@ func (c *Client) start() error {
 	// establish tcp conn
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%d", c.vpnHost, c.vpnPort), time.Second*10)
 	if err != nil {
-		return fmt.Errorf("could not establish tcp connection to vpn server: %s", err)
+		log.Fatalf("could not establish tcp connection to vpn server: %s", err)
 	}
 
 	// schedule conn close and add to client
