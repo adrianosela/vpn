@@ -1,17 +1,42 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
+
+type uiConfig struct {
+	uiPort int
+
+	wsRxChan chan []byte
+	wsTxChan chan []byte
+}
+
+func ui(c *uiConfig) {
+	go func() {
+		time.Sleep(time.Second * 1)
+		if err := openbrowser(fmt.Sprintf("%s:%d/", "http://localhost", c.uiPort)); err != nil {
+			log.Fatalf("[gui] could not open browser for GUI: %s", err)
+		}
+	}()
+	rtr := mux.NewRouter()
+	rtr.Methods(http.MethodGet).Path("/").HandlerFunc(serveHTML)
+	rtr.Methods(http.MethodGet).Path("/ws").HandlerFunc(c.serveWS)
+	if err := http.ListenAndServe(fmt.Sprintf(":%d", c.uiPort), rtr); err != nil {
+		log.Fatal(err)
+	}
+}
 
 // serveHTML serves the "homepage"
 func serveHTML(w http.ResponseWriter, r *http.Request) { w.Write([]byte(indexHTML)) }
 
 // serveWS upgrades HTTP to websockets
-func serveWS(w http.ResponseWriter, r *http.Request) {
+func (c *uiConfig) serveWS(w http.ResponseWriter, r *http.Request) {
 	// upgrade protocol to websockets connection
 	upgrader := websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
 	wsConn, err := upgrader.Upgrade(w, r, nil)
@@ -25,7 +50,10 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for {
-		/* INF */
+		select {
+		case msg := <-c.wsTxChan:
+			log.Printf("would have written %s\n", string(msg))
+		}
 	}
 }
 

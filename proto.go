@@ -1,49 +1,53 @@
 package main
 
 import (
-	"bufio"
 	b64 "encoding/base64"
-	"fmt"
-	"io"
-	"net"
+	"log"
 )
 
-func writeToConn(conn net.Conn, msg, secret string) error {
-	// encrypt message
-	ciphertext, err := aesEncrypt([]byte(msg), secret)
-	if err != nil {
-		return fmt.Errorf("could not encrypt message: %s", err)
+// encrypts and base64 encodes data from the input channel
+// and then writes it to the output channel
+func encryptAndEncode(in, out chan []byte) {
+	secret := mockPassphrase // FIXME
+	for {
+		select {
+		case msg := <-in:
+			// encrypt message
+			ciphertext, err := aesEncrypt(msg, secret)
+			if err != nil {
+				log.Printf("[proto] could not encrypt message: %s", err)
+				return
+			}
+			// ascii armour encrypted message (and add newline for easy msg cutting)
+			b64ciphertext := append([]byte(b64.StdEncoding.EncodeToString(ciphertext)), '\n')
+			// write b64 ciphertext to out chan
+			out <- b64ciphertext
+		}
 	}
-	// ascii armour encrypted message
-	b64ciphertext := []byte(b64.StdEncoding.EncodeToString(ciphertext))
-	// send message
-	if _, err = conn.Write(append(b64ciphertext, '\n')); err != nil {
-		return fmt.Errorf("could not write to tcp conn: %s", err)
-	}
-	return nil
 }
 
-func readFromConn(conn net.Conn, secret string) ([]byte, error) {
-	// receive data ended with \n or \r\n
-	bufReader := bufio.NewReader(conn)
-	// Read tokens delimited by newline
-	line, err := bufReader.ReadBytes('\n')
-	if err != nil {
-		if err == io.EOF {
-			return nil, err
+// base64 decodes and then decrypts data from the input channel
+// then writes it to the output channel
+func decodeAndDecrypt(in, out chan []byte) {
+	secret := mockPassphrase // FIXME
+
+	for {
+		select {
+		case data := <-in:
+			// base64 decode the ciphertext (chop off newline)
+			decodedCiphertext, err := b64.StdEncoding.DecodeString(string(data[:len(data)-1]))
+			if err != nil {
+				log.Printf("[proto] could not b64 decode message: %s", err)
+				return
+			}
+			// decrypt ciphertext
+			plaintext, err := aesDecrypt(decodedCiphertext, secret)
+			if err != nil {
+				log.Printf("[proto] could not decrypt ciphertext: %s", err)
+				return
+			}
+			// write plaintext to out chan
+			out <- plaintext
 		}
-		return nil, fmt.Errorf("could not read conn to newline: %s", err)
 	}
-	n := len(line)
-	// base64 decode the ciphertext
-	decodedCiphertext, err := b64.StdEncoding.DecodeString(string(line[:n-1]))
-	if err != nil {
-		return nil, fmt.Errorf("could not base64 decode message: %s", err)
-	}
-	// decrypt ciphertext
-	plaintext, err := aesDecrypt(decodedCiphertext, secret)
-	if err != nil {
-		return nil, fmt.Errorf("could not decrypt message: %s", err)
-	}
-	return plaintext, nil
 }

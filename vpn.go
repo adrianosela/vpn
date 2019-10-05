@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net"
-	"time"
 )
 
 // VPN represents the server in the program
@@ -36,46 +34,45 @@ func (v *VPN) start() error {
 	if err != nil {
 		return fmt.Errorf("could not establish tcp listener: %s", err)
 	}
+	defer ln.Close()
 	log.Printf("[vpn] started tcp listener on :%d", v.listenTCPPort)
-	// accept and handle clients
+
+	// dispatch UI thread, wait a sec, open browser
+	uiconf := &uiConfig{
+		wsRxChan: make(chan []byte),
+		wsTxChan: make(chan []byte),
+		uiPort:   v.uiPort,
+	}
+	go ui(uiconf)
+
+	// accept and handle client
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
 			log.Printf("[vpn] failed to accept tcp connection: %s", err)
 			continue
 		}
-		defer conn.Close()
 		log.Println("[vpn] accepted new tcp connection")
-		// dispatch new reader and writer
-		go v.writer(conn)
-		go v.reader(conn)
-	}
-}
 
-func (v *VPN) writer(conn net.Conn) {
-	for {
-		msg := "I'm Alice"
-		err := writeToConn(conn, msg, v.masterSecret)
-		if err != nil {
-			log.Printf("[vpn] could not send message to client: %s", err)
-			return
-		}
-		log.Printf("[vpn] sent message: %s", msg)
-		time.Sleep(time.Second * 1)
-	}
-}
+		tcpRxChan := make(chan []byte)
+		tcpTxChan := make(chan []byte)
 
-func (v *VPN) reader(conn net.Conn) {
-	for {
-		msg, err := readFromConn(conn, v.masterSecret)
-		if err != nil {
-			if err == io.EOF {
-				log.Printf("[vpn] connection finished (%s) - dropping client", err)
-			} else {
-				log.Printf("[vpn] could not read from conn: %s", err)
-			}
-			return
-		}
-		log.Printf("[vpn] received message: %s", msg)
+		// this thread reads messages from the the TCP connection
+		// onto the TCP receive channel and writes messages from the
+		// TCP transmission channel to the TCP connection
+		// It also writes to the TCP connection from the TCP
+		go tcpConnHandler(conn, tcpRxChan, tcpTxChan)
+
+		// this thread reads messages from the TCP transmission
+		// channel, then b64 decodes and decrypts it, and finally
+		// forwards the plaintext to the websocket transmission channel
+		// (to then be displayed in the UI by the UI thread)
+		go decodeAndDecrypt(tcpRxChan, uiconf.wsTxChan)
+
+		// this thread reads messages from the websocket receive
+		// channel, then encrypts and b64 encodes it, and finally
+		// forwards the b64-encoded-ciphertext to the TCP
+		// transmission channel
+		go encryptAndEncode(uiconf.wsRxChan, tcpTxChan)
 	}
 }
