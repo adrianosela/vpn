@@ -6,8 +6,8 @@ import (
 
 var (
 	// injected at build-time
-	version        string
-	mockPassphrase = "<< secret passphrase >>"
+	version    string
+	passphrase = "<< secret passphrase >>"
 
 	host = flag.String("host", "localhost", "vpn host to use")
 	port = flag.Int("port", 80, "tcp port for vpn")

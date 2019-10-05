@@ -27,20 +27,42 @@ type uiData struct {
 func ui(c *uiConfig) {
 	go func() {
 		time.Sleep(time.Second * 1)
-		if err := openbrowser(fmt.Sprintf("%s:%d/", "http://localhost", c.uiPort)); err != nil {
+		if err := openbrowser(fmt.Sprintf("%s:%d/home", "http://localhost", c.uiPort)); err != nil {
 			log.Fatalf("[gui] could not open browser for GUI: %s", err)
 		}
 	}()
 	rtr := mux.NewRouter()
-	rtr.Methods(http.MethodGet).Path("/").HandlerFunc(serveHTML)
+
+	// landing page (ask for passphrase)
+	rtr.Methods(http.MethodGet).Path("/home").HandlerFunc(serveHomeHTML)
+	rtr.Methods(http.MethodPost).Path("/home").HandlerFunc(c.passphraseHandler)
+
+	// secure chat endpoint
+	rtr.Methods(http.MethodGet).Path("/secure").HandlerFunc(serveChatHTML)
+
+	// upgrade to websocket endpoint
 	rtr.Methods(http.MethodGet).Path("/ws").HandlerFunc(c.serveWS)
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", c.uiPort), rtr); err != nil {
 		log.Fatal(err)
 	}
 }
 
-// serveHTML serves the "homepage"
-func serveHTML(w http.ResponseWriter, r *http.Request) { w.Write([]byte(indexHTML)) }
+// serveHomeHTML serves the home page (where the secret is requested)
+func serveHomeHTML(w http.ResponseWriter, r *http.Request) { w.Write([]byte(homeHTML)) }
+
+// passPhraseHandler receives the password from the user
+func (c *uiConfig) passphraseHandler(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		fmt.Fprintf(w, "could not parse POST form: %s", err)
+		return
+	}
+	// set passphrase globally
+	passphrase = r.FormValue("passphrase")
+	http.Redirect(w, r, fmt.Sprintf("%s:%d/secure", "http://localhost", c.uiPort), http.StatusSeeOther)
+}
+
+// serveChatHTML serves the chat page (where a secure channel has been established)
+func serveChatHTML(w http.ResponseWriter, r *http.Request) { w.Write([]byte(chatHTML)) }
 
 // serveWS upgrades HTTP to websockets
 func (c *uiConfig) serveWS(w http.ResponseWriter, r *http.Request) {
@@ -72,7 +94,24 @@ func openbrowser(url string) error {
 	}
 }
 
-const indexHTML = `
+const homeHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>VPN - Secure Channel Service</title>
+</head>
+<body>
+<div id="log"></div>
+        <form action="/home" method="post">
+            Enter Passphrase:
+            <input type="text" name="passphrase">
+            <input type="submit" value="Enter">
+        </form>
+</body>
+</html>
+`
+
+const chatHTML = `
 <!DOCTYPE html>
 <html lang="en">
 <head>

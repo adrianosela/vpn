@@ -8,7 +8,7 @@ import (
 // encrypts and base64 encodes data from the input channel
 // and then writes it to the output channel
 func encryptAndEncode(in, out chan []byte) {
-	secret := mockPassphrase // FIXME
+	secret := passphrase
 	for {
 		select {
 		case msg := <-in:
@@ -29,7 +29,7 @@ func encryptAndEncode(in, out chan []byte) {
 // base64 decodes and then decrypts data from the input channel
 // then writes it to the output channel
 func decodeAndDecrypt(in, out chan []byte) {
-	secret := mockPassphrase // FIXME
+	secret := passphrase
 
 	for {
 		select {
