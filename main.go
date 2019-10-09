@@ -1,37 +1,19 @@
 package main
 
-import (
-	"flag"
-)
+import "flag"
 
 var (
 	// injected at build-time
-	version    string
-	passphrase = "<< secret passphrase >>"
-
-	host = flag.String("host", "localhost", "vpn host to use")
-	port = flag.Int("port", 80, "tcp port for vpn")
-
-	clientMode = flag.Bool("c", false, "run application in client mode")
-	uiport     = flag.Int("uiport", 8080, "tcp port for UI's http listener")
+	version string
+	// runtime flag
+	uiport = flag.Int("uiport", 8080, "tcp port for application's UI")
 )
 
 func main() {
 	flag.Parse()
 
-	if *clientMode {
-		clientMain()
-	} else {
-		serverMain()
-	}
-}
+	app := newApp(*uiport)
+	defer app.close()
 
-func serverMain() {
-	vpn := NewVPN(*port, *uiport)
-	vpn.start()
-}
-
-func clientMain() {
-	client := NewClient(*host, *port, *uiport)
-	client.start()
+	app.start()
 }

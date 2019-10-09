@@ -35,7 +35,9 @@ func wsReader(conn *websocket.Conn, tcpRxChan chan []byte) {
 			}
 			break
 		}
-		var input uiData
+		var input struct {
+			Data string `json:"data"` // message body
+		}
 		if err = json.Unmarshal(jsonInput, &input); err != nil {
 			log.Printf("WS connection was closed unexpectedly: %s", err)
 			break
