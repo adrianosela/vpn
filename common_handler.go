@@ -1,6 +1,7 @@
 package main
 
 import (
+	b64 "encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -110,7 +111,10 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 		a.serveStateStep(w, r)
 		return
 	case stateCreateSharedSecret:
-		a.serveChat(w, r) // FIXME
+		a.serveSharedSecret(w, r)
+		return
+	case stateChat:
+		a.serveChat(w, r)
 	}
 }
 
@@ -135,6 +139,41 @@ func (a *App) modeSelectHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+}
+
+func (a *App) serveSharedSecret(w http.ResponseWriter, r *http.Request) {
+	if err := a.keyExchange.ComputeSharedSecret(); err != nil {
+		log.Fatalf("could not compute shared secret: %s", err)
+	}
+
+	tcpRxChan := make(chan []byte)
+	tcpTxChan := make(chan []byte)
+
+	// this thread reads messages from the the TCP connection
+	// onto the TCP receive channel and writes messages from the
+	// TCP transmission channel to the TCP connection
+	// It also writes to the TCP connection from the TCP
+	go tcpConnHandler(a.conn, tcpRxChan, tcpTxChan)
+
+	// this thread reads messages from the TCP transmission
+	// channel, then b64 decodes and decrypts it, and finally
+	// forwards the plaintext to the websocket transmission channel
+	// (to then be displayed in the UI by the UI thread)
+	go decodeAndDecrypt(tcpRxChan, a.wsTxChan, string(a.keyExchange.sharedSecret[:]))
+
+	// this thread reads messages from the websocket receive
+	// channel, then encrypts and b64 encodes it, and finally
+	// forwards the b64-encoded-ciphertext to the TCP
+	// transmission channel
+	go encryptAndEncode(a.wsRxChan, tcpTxChan, string(a.keyExchange.sharedSecret[:]))
+
+	// open chat on next step
+	a.state = stateChat
+
+	b64sharedKey := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.sharedSecret[:]))
+	message := fmt.Sprintf("$ generated shared key: %s", b64sharedKey)
+	a.stateData = fmt.Sprintf("%s<br>%s", a.stateData, message)
+	a.serveStateStep(w, r)
 }
 
 func (a *App) serveChat(w http.ResponseWriter, r *http.Request) {

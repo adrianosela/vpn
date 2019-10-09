@@ -21,6 +21,7 @@ const (
 	stateWaitForClientKey   = "WAITING FOR CLIENT KEY"
 	stateCreateSharedSecret = "CREATE SHARED SECRET"
 	stateSendKey            = "SEND KEY"
+	stateChat               = "CHAT"
 )
 
 func (a *App) clientConfigSetHandler(w http.ResponseWriter, r *http.Request) {
