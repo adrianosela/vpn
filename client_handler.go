@@ -1,11 +1,26 @@
 package main
 
 import (
+	"bufio"
+	b64 "encoding/base64"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"time"
+)
+
+const (
+	stateSetConfig          = "SET CONFIG"
+	stateSetPassphrase      = "SET PASSPHRASE"
+	stateListenTCP          = "LISTEN TCP"
+	stateDialTCP            = "DIAL TCP"
+	stateGenerateDH         = "GENERATE DIFFIE HELLMAN"
+	stateWaitForClient      = "WAITING FOR CLIENT"
+	stateWaitForServerKey   = "WAITING FOR SERVER KEY"
+	stateWaitForClientKey   = "WAITING FOR CLIENT KEY"
+	stateCreateSharedSecret = "CREATE SHARED SECRET"
+	stateSendKey            = "SEND KEY"
 )
 
 func (a *App) clientConfigSetHandler(w http.ResponseWriter, r *http.Request) {
@@ -56,7 +71,25 @@ func (a *App) clientDialTCP(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[client] established tcp connection with %s:%s", a.vpnHost, a.vpnPort)
 	a.conn = conn
 
-	a.stateData = fmt.Sprintf("established tcp connection with %s:%s ...waiting to receive server's public key", a.vpnHost, a.vpnPort)
+	go func() {
+		bufReader := bufio.NewReader(a.conn)
+		for {
+			// read until newline
+			encodedPeerPub, err := bufReader.ReadBytes('\n')
+			if err != nil {
+				log.Fatalf("could not read conn to newline: %s", err)
+			}
+			// base64 decode the ciphertext (chop off newline)
+			decodedPeerPub, err := b64.StdEncoding.DecodeString(string([]byte(encodedPeerPub)[:len(encodedPeerPub)-1]))
+			if err != nil {
+				log.Fatalf("could not b64 decode message: %s", err)
+			}
+			a.keyExchange.peerPub = decodedPeerPub
+			return
+		}
+	}()
+
+	a.stateData = fmt.Sprintf("$ established tcp connection with %s:%s ...waiting to receive server's public key", a.vpnHost, a.vpnPort)
 	a.state = stateWaitForServerKey
 	a.serveStateStep(w, r)
 }
@@ -67,7 +100,26 @@ func (a *App) clientGenerateDHHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	message := fmt.Sprintf("generated diffie hellman keys!")
+
+	b64priv := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.priv[:]))
+	b64pub := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.pub[:]))
+	message := fmt.Sprintf("$ generated diffie hellman keys: [priv:%s] [pub:%s]", b64priv, b64pub)
 	a.stateData = fmt.Sprintf("%s<br>%s", a.stateData, message)
+	a.state = stateSendKey
+	a.serveStateStep(w, r)
+}
+
+func (a *App) clientSendKeyHandler(w http.ResponseWriter, r *http.Request) {
+	b64pub := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.pub[:]))
+
+	if _, err := a.conn.Write(append(b64pub, '\n')); err != nil {
+		log.Fatalf("could not write key to tcp conn: %s", err)
+		return
+	}
+
+	message := fmt.Sprintf("$ sent public key to server: [pub:%s] ...next: establishing shared secret", b64pub)
+	a.stateData = fmt.Sprintf("%s<br>%s", a.stateData, message)
+
+	a.state = stateCreateSharedSecret
 	a.serveStateStep(w, r)
 }

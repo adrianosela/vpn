@@ -46,11 +46,11 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if a.conn == nil {
-			a.stateData = fmt.Sprintf("%s<br>...still waiting for client", a.stateData)
+			a.stateData = fmt.Sprintf("%s<br>$ ...still waiting for client", a.stateData)
 			a.serveStateStep(w, r)
 			return
 		}
-		a.stateData = fmt.Sprintf("%s<br>client connected! ...generating diffie hellman keys", a.stateData)
+		a.stateData = fmt.Sprintf("%s<br>$  client connected! next: generating server ecdh keys", a.stateData)
 		a.state = stateGenerateDH
 		a.serveStateStep(w, r)
 		return
@@ -59,12 +59,13 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+
 		if a.keyExchange.peerPub == nil {
-			a.stateData = fmt.Sprintf("%s<br>...still waiting for server key", a.stateData)
+			a.stateData = fmt.Sprintf("%s<br>$ ...still waiting for server key", a.stateData)
 			a.serveStateStep(w, r)
 			return
 		}
-		a.stateData = fmt.Sprintf("%s<br>server key received! ...generating client keys", a.stateData)
+		a.stateData = fmt.Sprintf("%s<br>$ server key received! next: generating client ecdh keys", a.stateData)
 		a.state = stateGenerateDH
 		a.serveStateStep(w, r)
 		return
@@ -80,6 +81,36 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+	case stateSendKey:
+		switch a.mode {
+		case modeClient:
+			a.clientSendKeyHandler(w, r)
+			return
+		case modeServer:
+			a.serverSendKeyHandler(w, r)
+			return
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+	case stateWaitForClientKey:
+		if a.mode != modeServer {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		if a.keyExchange.peerPub == nil {
+			a.stateData = fmt.Sprintf("%s<br>$ ...still waiting for client key", a.stateData)
+			a.serveStateStep(w, r)
+			return
+		}
+
+		a.stateData = fmt.Sprintf("%s<br>$ client key received! next: establishing shared secret", a.stateData)
+		a.state = stateCreateSharedSecret
+		a.serveStateStep(w, r)
+		return
+	case stateCreateSharedSecret:
+		a.serveChat(w, r) // FIXME
 	}
 }
 
@@ -122,5 +153,6 @@ func (a *App) serveWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	wsConn.WriteMessage(websocket.TextMessage, []byte("Welcome! Enjoy chatting over a secure channel!"))
 	go wsConnHandler(wsConn, a.wsRxChan, a.wsTxChan)
 }

@@ -29,18 +29,9 @@ type App struct {
 }
 
 const (
-	stateSetMode          = "SET MODE"
-	stateSetConfig        = "SET CONFIG"
-	stateSetPassphrase    = "SET PASSPHRASE"
-	stateListenTCP        = "LISTEN TCP"
-	stateDialTCP          = "DIAL TCP"
-	stateGenerateDH       = "GENERATE DIFFIE HELLMAN"
-	stateWaitForClient    = "WAITING FOR CLIENT"
-	stateWaitForServerKey = "WAITING FOR SERVER"
-	stateExchangeKeys     = "EXCHANGE KEY"
-
-	modeServer = "Server"
-	modeClient = "Client"
+	stateSetMode = "SET MODE"
+	modeServer   = "Server"
+	modeClient   = "Client"
 )
 
 func newApp(uiPort int) *App {
@@ -59,9 +50,9 @@ func (a *App) start() {
 	rtr.Path("/app").HandlerFunc(a.serveApp)
 	rtr.Methods(http.MethodGet).Path("/chat").HandlerFunc(a.serveChat)
 	rtr.Methods(http.MethodGet).Path("/ws").HandlerFunc(a.serveWS)
-	// wait a sec to allow server to start, then open browser
+
 	go func() {
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Millisecond * 25) // wait to allow server to start, then open browser
 		if err := openbrowser(fmt.Sprintf("%s:%d/app", "http://localhost", a.uiPort)); err != nil {
 			log.Fatalf("[error] could not open browser: %s", err)
 		}

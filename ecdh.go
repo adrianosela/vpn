@@ -23,7 +23,7 @@ import (
 type DH struct {
 	priv         [32]byte
 	pub          [32]byte
-	peerPub      *[32]byte
+	peerPub      []byte
 	sharedSecret [32]byte
 }
 
