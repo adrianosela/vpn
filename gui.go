@@ -1,9 +1,5 @@
 package main
 
-type uiData struct {
-	Data string `json:"data"` // message body
-}
-
 const modeHTML = `
 <!DOCTYPE html>
 <html lang="en">

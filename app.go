@@ -1,13 +1,10 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
-	"os/exec"
-	"runtime"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -53,7 +50,7 @@ func (a *App) start() {
 	// set app HTTP endpoints and websocket handler
 	rtr := mux.NewRouter()
 	rtr.Path("/app").HandlerFunc(a.serveApp)
-	rtr.Methods(http.MethodGet).Path("/secure").HandlerFunc(serveChatHTML)
+	rtr.Methods(http.MethodGet).Path("/chat").HandlerFunc(a.serveChat)
 	rtr.Methods(http.MethodGet).Path("/ws").HandlerFunc(a.serveWS)
 	// wait a sec to allow server to start, then open browser
 	go func() {
@@ -76,125 +73,26 @@ func (a *App) close() {
 	}
 }
 
-func (a *App) serveModeSelect(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet: // GET
-		w.Write([]byte(modeHTML))
-		return
-	case http.MethodPost: // POST
-		if err := r.ParseForm(); err != nil {
-			http.Error(w, "could not parse post form", http.StatusBadRequest)
-			return
-		}
-		if a.mode = r.FormValue("mode"); a.mode != modeClient && a.mode != modeServer {
-			http.Error(w, "no mode selected", http.StatusBadRequest)
-			return
-		}
-		a.state = stateSetConfig
-		http.Redirect(w, r, fmt.Sprintf("%s:%d/app", "http://localhost", a.uiPort), http.StatusSeeOther)
-		return
-	default: // reject any other methods
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-}
-
-func serveChatHTML(w http.ResponseWriter, r *http.Request) { w.Write([]byte(chatHTML)) }
-
-func (a *App) serveConfigSet(w http.ResponseWriter, r *http.Request) {
-	if a.mode == modeClient {
-		switch r.Method {
-		case http.MethodGet:
-			w.Write([]byte(clientConfigHTML))
-			return
-		case http.MethodPost:
-			if err := r.ParseForm(); err != nil {
-				http.Error(w, "could not parse post form", http.StatusBadRequest)
-				return
-			}
-			a.masterSecret = r.FormValue("passphrase")
-			a.vpnHost = r.FormValue("host")
-			a.vpnPort = r.FormValue("port")
-			if a.masterSecret == "" {
-				http.Error(w, "passphrase was empty", http.StatusBadRequest)
-				return
-			}
-			if a.vpnHost == "" {
-				http.Error(w, "host was empty", http.StatusBadRequest)
-				return
-			}
-			if a.vpnHost == "" {
-				http.Error(w, "port was empty", http.StatusBadRequest)
-				return
-			}
-			// establish tcp conn
-			conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", a.vpnHost, a.vpnPort), time.Second*10)
-			if err != nil {
-				log.Fatalf("could not establish tcp connection to vpn server: %s", err)
-			}
-			a.conn = conn
-			log.Printf("[client] established tcp connection with %s:%s", a.vpnHost, a.vpnPort)
-
-			a.state = stateDiffieHellman
-			http.Redirect(w, r, fmt.Sprintf("%s:%d/app", "http://localhost", a.uiPort), http.StatusSeeOther)
-			return
-		default:
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-	} else {
-		switch r.Method {
-		case http.MethodGet:
-			w.Write([]byte(serverConfigHTML))
-			return
-		case http.MethodPost:
-			if err := r.ParseForm(); err != nil {
-				http.Error(w, "could not parse post form", http.StatusBadRequest)
-				return
-			}
-			a.masterSecret = r.FormValue("passphrase")
-			a.vpnPort = r.FormValue("port")
-			if a.masterSecret == "" {
-				http.Error(w, "passphrase was empty", http.StatusBadRequest)
-				return
-			}
-			if a.vpnPort == "" {
-				http.Error(w, "port was empty", http.StatusBadRequest)
-				return
-			}
-
-			// establish tcp listener for the vpn service
-			go func() {
-				ln, err := net.Listen("tcp", fmt.Sprintf(":%s", a.vpnPort))
-				if err != nil {
-					log.Fatal(fmt.Errorf("could not establish tcp listener: %s", err))
-				}
-				a.listener = ln
-				log.Printf("[vpn] started tcp listener on :%s", a.vpnPort)
-			}()
-
-			a.state = stateDiffieHellman
-			http.Redirect(w, r, fmt.Sprintf("%s:%d/app", "http://localhost", a.uiPort), http.StatusSeeOther)
-			return
-		default:
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-	}
-}
-
+// serveApp serves data based on application state, not on routes
 func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 	switch a.state {
 	case stateSetMode:
-		a.serveModeSelect(w, r)
+		a.modeSelectHandler(w, r)
 		return
 	case stateSetConfig:
-		a.serveConfigSet(w, r)
+		a.configSetHandler(w, r)
 		return
+	case stateDiffieHellman:
+		a.diffieHellmanHandler(w, r)
 	default:
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+}
+
+func (a *App) serveChat(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(chatHTML))
+	return
 }
 
 func (a *App) serveWS(w http.ResponseWriter, r *http.Request) {
@@ -204,17 +102,4 @@ func (a *App) serveWS(w http.ResponseWriter, r *http.Request) {
 		log.Fatal(err)
 	}
 	go wsConnHandler(wsConn, a.wsRxChan, a.wsTxChan)
-}
-
-func openbrowser(url string) error {
-	switch runtime.GOOS {
-	case "linux":
-		return exec.Command("xdg-open", url).Start()
-	case "windows":
-		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		return exec.Command("open", url).Start()
-	default:
-		return errors.New("unsupported platform")
-	}
 }

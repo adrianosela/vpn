@@ -15,8 +15,9 @@ import (
 	"crypto"
 	"crypto/rand"
 	"errors"
-	"golang.org/x/crypto/curve25519"
 	"io"
+
+	"golang.org/x/crypto/curve25519"
 )
 
 const keySize = 32
