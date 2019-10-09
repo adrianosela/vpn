@@ -20,6 +20,8 @@ type App struct {
 	wsTxChan chan []byte
 	uiPort   int
 	conn     net.Conn
+
+	listener net.Listener
 	vpnHost  string
 	vpnPort  string
 
@@ -66,7 +68,12 @@ func (a *App) start() {
 }
 
 func (a *App) close() {
-	a.conn.Close()
+	if a.conn != nil {
+		a.conn.Close()
+	}
+	if a.listener != nil {
+		a.listener.Close()
+	}
 }
 
 func (a *App) serveModeSelect(w http.ResponseWriter, r *http.Request) {
@@ -155,7 +162,17 @@ func (a *App) serveConfigSet(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "port was empty", http.StatusBadRequest)
 				return
 			}
-			// FIXME: dispatch serve TCP here
+
+			// establish tcp listener for the vpn service
+			go func() {
+				ln, err := net.Listen("tcp", fmt.Sprintf(":%s", a.vpnPort))
+				if err != nil {
+					log.Fatal(fmt.Errorf("could not establish tcp listener: %s", err))
+				}
+				a.listener = ln
+				log.Printf("[vpn] started tcp listener on :%s", a.vpnPort)
+			}()
+
 			a.state = stateDiffieHellman
 			http.Redirect(w, r, fmt.Sprintf("%s:%d/app", "http://localhost", a.uiPort), http.StatusSeeOther)
 			return
