@@ -7,12 +7,12 @@ import (
 
 // encrypts and base64 encodes data from the input channel
 // and then writes it to the output channel
-func encryptAndEncode(in, out chan []byte, passphrase string) {
+func encryptAndEncode(in, out chan []byte, key string) {
 	for {
 		select {
 		case msg := <-in:
 			// encrypt message
-			ciphertext, err := aesEncrypt(msg, passphrase)
+			ciphertext, err := aesEncrypt(msg, key)
 			if err != nil {
 				log.Printf("[proto] could not encrypt message: %s", err)
 				return
@@ -27,7 +27,7 @@ func encryptAndEncode(in, out chan []byte, passphrase string) {
 
 // base64 decodes and then decrypts data from the input channel
 // then writes it to the output channel
-func decodeAndDecrypt(in, out chan []byte, passphrase string) {
+func decodeAndDecrypt(in, out chan []byte, key string) {
 	for {
 		select {
 		case data := <-in:
@@ -38,7 +38,7 @@ func decodeAndDecrypt(in, out chan []byte, passphrase string) {
 				return
 			}
 			// decrypt ciphertext
-			plaintext, err := aesDecrypt(decodedCiphertext, passphrase)
+			plaintext, err := aesDecrypt(decodedCiphertext, key)
 			if err != nil {
 				log.Printf("[proto] could not decrypt ciphertext: %s", err)
 				return

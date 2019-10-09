@@ -6,7 +6,7 @@ var (
 	// injected at build-time
 	version string
 	// runtime flag
-	uiport = flag.Int("uiport", 8080, "tcp port for UI's http listener")
+	uiport = flag.Int("uiport", 8080, "tcp port for application's UI")
 )
 
 func main() {

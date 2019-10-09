@@ -20,16 +20,25 @@ import (
 	"golang.org/x/crypto/curve25519"
 )
 
+// DH contains fields relevant to a
+// diffie hellman key exchange
+type DH struct {
+	priv         crypto.PrivateKey
+	pub          crypto.PublicKey
+	peerPub      crypto.PublicKey
+	sharedSecret []byte
+}
+
 const keySize = 32
 
 // GenerateKey generates a new key pair for a key exchange
-func GenerateKey() (crypto.PrivateKey, crypto.PublicKey, error) {
+func (x *DH) GenerateKey() error {
 	// we start by generating 32 secret random bytes
 	// from a cryptographically safe source
 	priv := [keySize]byte{}
 	_, err := io.ReadFull(rand.Reader, priv[:])
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	// as per curve25519
 	priv[0] &= 248
@@ -38,26 +47,31 @@ func GenerateKey() (crypto.PrivateKey, crypto.PublicKey, error) {
 	// we then generate the corresponding 32-byte curve25519 public key
 	pub := [keySize]byte{}
 	curve25519.ScalarBaseMult(&pub, &priv)
-	return priv, pub, nil
+	// set on DH
+	x.priv = priv
+	x.pub = pub
+	return nil
 }
 
 // ComputeSharedSecret computes the secret shared through the Diffie-Hellman
-func ComputeSharedSecret(priv crypto.PrivateKey, peerPub crypto.PublicKey) ([]byte, error) {
+func (x *DH) ComputeSharedSecret() error {
 	priv32 := [keySize]byte{}
 	pub32 := [keySize]byte{}
 	// convert keys to bytes (to do math on them)
-	if privBytes, ok := priv.([]byte); ok {
+	if privBytes, ok := x.priv.([]byte); ok {
 		copy(priv32[:], privBytes)
 	} else {
-		return nil, errors.New("bad private key type")
+		return errors.New("bad private key type")
 	}
-	if pubBytes, ok := peerPub.([]byte); ok {
+	if pubBytes, ok := x.peerPub.([]byte); ok {
 		copy(pub32[:], pubBytes)
 	} else {
-		return nil, errors.New("bad public key type")
+		return errors.New("bad public key type")
 	}
 	// compute shared secret
 	shared := [keySize]byte{}
 	curve25519.ScalarMult(&shared, &priv32, &pub32)
-	return shared[:], nil
+	// set on DH
+	x.sharedSecret = shared[:]
+	return nil
 }

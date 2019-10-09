@@ -54,6 +54,22 @@ const serverConfigHTML = `
 </html>
 `
 
+const messageTemplateHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>VPN - Secure Channel Service</title>
+</head>
+<body>
+<div id="log"></div>
+	<h4> Messages: </h4> %s <br>
+<form action="/app" method="post">
+	<input type="submit" value="Next">
+</form>
+</body>
+</html>
+`
+
 const chatHTML = `
 <!DOCTYPE html>
 <html lang="en">

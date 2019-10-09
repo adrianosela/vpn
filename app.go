@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
 )
 
 // App represents application configuration and state
@@ -23,15 +22,20 @@ type App struct {
 	vpnPort  string
 
 	masterSecret string
-	mode         string
-	state        string
+	keyExchange  DH
+
+	mode      string
+	state     string
+	stateData string
 }
 
 const (
 	stateSetMode       = "SET MODE"
 	stateSetConfig     = "SET CONFIG"
 	stateSetPassphrase = "SET PASSPHRASE"
-	stateDiffieHellman = "DIFFIE HELLMAN"
+	stateListenTCP     = "LISTEN TCP"
+	stateDialTCP       = "DIAL TCP"
+	stateGenerateDH    = "GENERATE DIFFIE HELLMAN"
 
 	modeServer = "Server"
 	modeClient = "Client"
@@ -39,10 +43,11 @@ const (
 
 func newApp(uiPort int) *App {
 	return &App{
-		wsRxChan: make(chan []byte),
-		wsTxChan: make(chan []byte),
-		uiPort:   uiPort,
-		state:    stateSetMode,
+		wsRxChan:    make(chan []byte),
+		wsTxChan:    make(chan []byte),
+		keyExchange: DH{},
+		uiPort:      uiPort,
+		state:       stateSetMode,
 	}
 }
 
@@ -71,35 +76,4 @@ func (a *App) close() {
 	if a.listener != nil {
 		a.listener.Close()
 	}
-}
-
-// serveApp serves data based on application state, not on routes
-func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
-	switch a.state {
-	case stateSetMode:
-		a.modeSelectHandler(w, r)
-		return
-	case stateSetConfig:
-		a.configSetHandler(w, r)
-		return
-	case stateDiffieHellman:
-		a.diffieHellmanHandler(w, r)
-	default:
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-}
-
-func (a *App) serveChat(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(chatHTML))
-	return
-}
-
-func (a *App) serveWS(w http.ResponseWriter, r *http.Request) {
-	upgrader := websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
-	wsConn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	go wsConnHandler(wsConn, a.wsRxChan, a.wsTxChan)
 }
