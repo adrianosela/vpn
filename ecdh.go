@@ -12,9 +12,7 @@ package main
  */
 
 import (
-	"crypto"
 	"crypto/rand"
-	"errors"
 	"io"
 
 	"golang.org/x/crypto/curve25519"
@@ -23,10 +21,10 @@ import (
 // DH contains fields relevant to a
 // diffie hellman key exchange
 type DH struct {
-	priv         crypto.PrivateKey
-	pub          crypto.PublicKey
-	peerPub      crypto.PublicKey
-	sharedSecret []byte
+	priv         [32]byte
+	pub          [32]byte
+	peerPub      *[32]byte
+	sharedSecret [32]byte
 }
 
 const keySize = 32
@@ -55,23 +53,10 @@ func (x *DH) GenerateKey() error {
 
 // ComputeSharedSecret computes the secret shared through the Diffie-Hellman
 func (x *DH) ComputeSharedSecret() error {
-	priv32 := [keySize]byte{}
-	pub32 := [keySize]byte{}
-	// convert keys to bytes (to do math on them)
-	if privBytes, ok := x.priv.([]byte); ok {
-		copy(priv32[:], privBytes)
-	} else {
-		return errors.New("bad private key type")
-	}
-	if pubBytes, ok := x.peerPub.([]byte); ok {
-		copy(pub32[:], pubBytes)
-	} else {
-		return errors.New("bad public key type")
-	}
 	// compute shared secret
 	shared := [keySize]byte{}
-	curve25519.ScalarMult(&shared, &priv32, &pub32)
+	curve25519.ScalarMult(&shared, &x.priv, &x.pub)
 	// set on DH
-	x.sharedSecret = shared[:]
+	x.sharedSecret = shared
 	return nil
 }

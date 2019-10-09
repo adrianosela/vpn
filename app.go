@@ -17,9 +17,8 @@ type App struct {
 	uiPort   int
 	conn     net.Conn
 
-	listener net.Listener
-	vpnHost  string
-	vpnPort  string
+	vpnHost string
+	vpnPort string
 
 	masterSecret string
 	keyExchange  DH
@@ -30,12 +29,15 @@ type App struct {
 }
 
 const (
-	stateSetMode       = "SET MODE"
-	stateSetConfig     = "SET CONFIG"
-	stateSetPassphrase = "SET PASSPHRASE"
-	stateListenTCP     = "LISTEN TCP"
-	stateDialTCP       = "DIAL TCP"
-	stateGenerateDH    = "GENERATE DIFFIE HELLMAN"
+	stateSetMode          = "SET MODE"
+	stateSetConfig        = "SET CONFIG"
+	stateSetPassphrase    = "SET PASSPHRASE"
+	stateListenTCP        = "LISTEN TCP"
+	stateDialTCP          = "DIAL TCP"
+	stateGenerateDH       = "GENERATE DIFFIE HELLMAN"
+	stateWaitForClient    = "WAITING FOR CLIENT"
+	stateWaitForServerKey = "WAITING FOR SERVER"
+	stateExchangeKeys     = "EXCHANGE KEY"
 
 	modeServer = "Server"
 	modeClient = "Client"
@@ -72,8 +74,5 @@ func (a *App) start() {
 func (a *App) close() {
 	if a.conn != nil {
 		a.conn.Close()
-	}
-	if a.listener != nil {
-		a.listener.Close()
 	}
 }

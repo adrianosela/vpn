@@ -1,6 +1,7 @@
 package main
 
 import (
+	b64 "encoding/base64"
 	"fmt"
 	"log"
 	"net"
@@ -43,12 +44,21 @@ func (a *App) serverListenTCP(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatal(fmt.Errorf("could not establish tcp listener: %s", err))
 		}
-		a.listener = ln
-		log.Printf("[vpn] started tcp listener on :%s", a.vpnPort)
+		log.Printf("[server] started tcp listener on :%s", a.vpnPort)
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				log.Fatalf("could not accept tcp conn: %s", err)
+			}
+			log.Println("[server] accepted client tcp connection")
+			a.conn = conn
+			break
+		}
 	}()
+
 	// tell user about it
-	a.state = stateGenerateDH
-	a.stateData = fmt.Sprintf("started tcp listener on :%s", a.vpnPort)
+	a.state = stateWaitForClient
+	a.stateData = fmt.Sprintf("started tcp listener on :%s, waiting for client...", a.vpnPort)
 	a.serveStateStep(w, r)
 }
 
@@ -58,7 +68,14 @@ func (a *App) serverGenerateDHHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	message := fmt.Sprintf("generated diffie hellman keys!")
+	b64priv := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.priv[:]))
+	b64pub := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.pub[:]))
+	message := fmt.Sprintf("<br>generated diffie hellman keys:<br>[priv:%s] [pub:%s]", b64priv, b64pub)
 	a.stateData = fmt.Sprintf("%s<br>%s", a.stateData, message)
+
+	a.state = stateWaitForClient
+	if a.conn != nil {
+		a.state = stateExchangeKeys
+	}
 	a.serveStateStep(w, r)
 }

@@ -40,6 +40,34 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 		}
 		a.clientDialTCP(w, r)
 		return
+	case stateWaitForClient:
+		if a.mode != modeServer {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if a.conn == nil {
+			a.stateData = fmt.Sprintf("%s<br>...still waiting for client", a.stateData)
+			a.serveStateStep(w, r)
+			return
+		}
+		a.stateData = fmt.Sprintf("%s<br>client connected! ...generating diffie hellman keys", a.stateData)
+		a.state = stateGenerateDH
+		a.serveStateStep(w, r)
+		return
+	case stateWaitForServerKey:
+		if a.mode != modeClient {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		if a.keyExchange.peerPub == nil {
+			a.stateData = fmt.Sprintf("%s<br>...still waiting for server key", a.stateData)
+			a.serveStateStep(w, r)
+			return
+		}
+		a.stateData = fmt.Sprintf("%s<br>server key received! ...generating client keys", a.stateData)
+		a.state = stateGenerateDH
+		a.serveStateStep(w, r)
+		return
 	case stateGenerateDH:
 		switch a.mode {
 		case modeClient:
@@ -52,22 +80,6 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-
-	// case stateExchangeKey:
-	// 	switch a.mode {
-	// 	case modeClient:
-	// 		a.clientKeyExchangeHandler(w, r)
-	// 		return
-	// 	case modeServer:
-	// 		a.serverKeyExchangeHandler(w, r)
-	// 		return
-	// 	default:
-	// 		w.WriteHeader(http.StatusNotFound)
-	// 		return
-	// 	}
-	default:
-		w.WriteHeader(http.StatusNotFound)
-		return
 	}
 }
 

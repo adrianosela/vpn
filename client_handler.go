@@ -47,15 +47,18 @@ func (a *App) clientConfigSetHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// FIXME
 func (a *App) clientDialTCP(w http.ResponseWriter, r *http.Request) {
 	// establish tcp conn
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", a.vpnHost, a.vpnPort), time.Second*10)
 	if err != nil {
 		log.Fatalf("could not establish tcp connection to vpn server: %s", err)
 	}
-	a.conn = conn
 	log.Printf("[client] established tcp connection with %s:%s", a.vpnHost, a.vpnPort)
+	a.conn = conn
+
+	a.stateData = fmt.Sprintf("established tcp connection with %s:%s ...waiting to receive server's public key", a.vpnHost, a.vpnPort)
+	a.state = stateWaitForServerKey
+	a.serveStateStep(w, r)
 }
 
 func (a *App) clientGenerateDHHandler(w http.ResponseWriter, r *http.Request) {
