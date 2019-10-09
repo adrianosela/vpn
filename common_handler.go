@@ -66,7 +66,9 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 			a.serveStateStep(w, r)
 			return
 		}
-		a.stateData = fmt.Sprintf("%s<br>$ server key received! next: generating client ecdh keys", a.stateData)
+
+		b64peerPub := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.peerPub))
+		a.stateData = fmt.Sprintf("%s<br>$ server key received [pub:%s]! next: generating client ecdh keys", a.stateData, b64peerPub)
 		a.state = stateGenerateDH
 		a.serveStateStep(w, r)
 		return
@@ -106,7 +108,8 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		a.stateData = fmt.Sprintf("%s<br>$ client key received! next: establishing shared secret", a.stateData)
+		b64peerPub := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.peerPub))
+		a.stateData = fmt.Sprintf("%s<br>$ client key received [pub:%s]! next: establishing shared secret", a.stateData, b64peerPub)
 		a.state = stateCreateSharedSecret
 		a.serveStateStep(w, r)
 		return
