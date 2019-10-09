@@ -7,7 +7,7 @@ import (
 
 // encrypts and base64 encodes data from the input channel
 // and then writes it to the output channel
-func encryptAndEncode(in, out chan []byte) {
+func encryptAndEncode(in, out chan []byte, passphrase string) {
 	for {
 		select {
 		case msg := <-in:
@@ -27,7 +27,7 @@ func encryptAndEncode(in, out chan []byte) {
 
 // base64 decodes and then decrypts data from the input channel
 // then writes it to the output channel
-func decodeAndDecrypt(in, out chan []byte) {
+func decodeAndDecrypt(in, out chan []byte, passphrase string) {
 	for {
 		select {
 		case data := <-in:

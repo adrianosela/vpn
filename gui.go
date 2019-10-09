@@ -1,100 +1,27 @@
 package main
 
-import (
-	"errors"
-	"fmt"
-	"log"
-	"net/http"
-	"os/exec"
-	"runtime"
-	"time"
-
-	"github.com/gorilla/mux"
-	"github.com/gorilla/websocket"
-)
-
-type uiConfig struct {
-	uiPort int
-
-	wsRxChan chan []byte
-	wsTxChan chan []byte
-}
-
 type uiData struct {
 	Data string `json:"data"` // message body
 }
 
-func ui(c *uiConfig) {
-	go func() {
-		time.Sleep(time.Second * 1)
-		if err := openbrowser(fmt.Sprintf("%s:%d/home", "http://localhost", c.uiPort)); err != nil {
-			log.Fatalf("[gui] could not open browser for GUI: %s", err)
-		}
-	}()
-	rtr := mux.NewRouter()
+const modeHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>VPN - Secure Channel Service</title>
+</head>
+<body>
+<form action="/app" method="post">
+	<h2> Select Mode of Operation: </h2> </br>
+	Server:<input type="radio" name="mode" value="Server"><br>
+	Client:<input type="radio" name="mode" value="Client"><br>
+  <input type="submit" value="Enter">
+</form>
+</body>
+</html>
+`
 
-	// landing page (ask for passphrase)
-	rtr.Methods(http.MethodGet).Path("/home").HandlerFunc(serveHomeHTML)
-	rtr.Methods(http.MethodPost).Path("/home").HandlerFunc(c.passphraseHandler)
-
-	// secure chat endpoint
-	rtr.Methods(http.MethodGet).Path("/secure").HandlerFunc(serveChatHTML)
-
-	// upgrade to websocket endpoint
-	rtr.Methods(http.MethodGet).Path("/ws").HandlerFunc(c.serveWS)
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", c.uiPort), rtr); err != nil {
-		log.Fatal(err)
-	}
-}
-
-// serveHomeHTML serves the home page (where the secret is requested)
-func serveHomeHTML(w http.ResponseWriter, r *http.Request) { w.Write([]byte(homeHTML)) }
-
-// passPhraseHandler receives the password from the user
-func (c *uiConfig) passphraseHandler(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseForm(); err != nil {
-		fmt.Fprintf(w, "could not parse POST form: %s", err)
-		return
-	}
-	// set passphrase globally
-	passphrase = r.FormValue("passphrase")
-	http.Redirect(w, r, fmt.Sprintf("%s:%d/secure", "http://localhost", c.uiPort), http.StatusSeeOther)
-}
-
-// serveChatHTML serves the chat page (where a secure channel has been established)
-func serveChatHTML(w http.ResponseWriter, r *http.Request) { w.Write([]byte(chatHTML)) }
-
-// serveWS upgrades HTTP to websockets
-func (c *uiConfig) serveWS(w http.ResponseWriter, r *http.Request) {
-	// upgrade protocol to websockets connection
-	upgrader := websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
-	wsConn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-	// prompt for passphrase
-	prompt := []byte(fmt.Sprintf("Welcome! your passphrase was: %s", passphrase))
-	if err := wsConn.WriteMessage(websocket.TextMessage, prompt); err != nil {
-		log.Fatal(err)
-	}
-
-	go wsConnHandler(wsConn, c.wsRxChan, c.wsTxChan)
-}
-
-func openbrowser(url string) error {
-	switch runtime.GOOS {
-	case "linux":
-		return exec.Command("xdg-open", url).Start()
-	case "windows":
-		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		return exec.Command("open", url).Start()
-	default:
-		return errors.New("unsupported platform")
-	}
-}
-
-const homeHTML = `
+const clientConfigHTML = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -102,11 +29,31 @@ const homeHTML = `
 </head>
 <body>
 <div id="log"></div>
-        <form action="/home" method="post">
-            Enter Passphrase:
-            <input type="text" name="passphrase">
+        <form action="/app" method="post">
+				<h2> Configure Server: </h2><br>
+            Server Host: <input type="text" name="host"><br>
+						Server Port: <input type="text" name="port"><br>
+            Master Passphrase: <input type="text" name="passphrase">
             <input type="submit" value="Enter">
         </form>
+</body>
+</html>
+`
+
+const serverConfigHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>VPN - Secure Channel Service</title>
+</head>
+<body>
+<div id="log"></div>
+			<form action="/app" method="post">
+				<h2> Configure Server: </h2><br>
+				TCP Listener Port: <input type="text" name="port"><br>
+				Master Passphrase: <input type="text" name="passphrase">
+				<input type="submit" value="Enter">
+			</form>
 </body>
 </html>
 `
