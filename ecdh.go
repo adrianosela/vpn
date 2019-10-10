@@ -53,10 +53,9 @@ func (x *DH) GenerateKey() error {
 
 // ComputeSharedSecret computes the secret shared through the Diffie-Hellman
 func (x *DH) ComputeSharedSecret() error {
-	//fmt.Println(x.peerPub)
-
 	// compute shared secret
 	shared := [keySize]byte{}
+
 	peerPub := [keySize]byte{}
 	copy(peerPub[:], x.peerPub)
 	curve25519.ScalarMult(&shared, &x.priv, &peerPub)
