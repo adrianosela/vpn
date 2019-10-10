@@ -1,19 +1,18 @@
 # vpn
 
-* build the program
+#### Prerequisistes:
+
+You need [Go](https://golang.org/dl/) for your operating system
+
+#### Build binary:
 
 ```
 go build
 ```
 
-* run in server mode:
+#### Run binary:
 
 ```
-./vpn -uiport $UIPORT
+./vpn -uiport ${UI_PORT}
 ```
-
-* run in client mode:
-
-```
-./vpn -c -host $HOST -port $PORT -uiport $UIPORT
-```
+where UI_PORT is any unused TCP port
