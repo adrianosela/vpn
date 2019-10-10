@@ -82,7 +82,13 @@ func (a *App) serverGenerateDHHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) serverSendKeyHandler(w http.ResponseWriter, r *http.Request) {
-	b64pub := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.pub[:]))
+
+	encryptedPub, err := aesEncrypt(a.keyExchange.pub[:], a.masterSecret)
+	if err != nil {
+		log.Fatalf("could not encrypt server pub key: %s", err)
+		return
+	}
+	b64pub := []byte(b64.StdEncoding.EncodeToString(encryptedPub))
 
 	if _, err := a.conn.Write(append(b64pub, '\n')); err != nil {
 		log.Fatalf("could not write key through tcp conn: %s", err)
@@ -104,7 +110,14 @@ func (a *App) serverSendKeyHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Fatalf("could not b64 decode message: %s", err)
 			}
-			a.keyExchange.peerPub = decodedPeerPub
+			// AES decrypt
+			decryptedPub, err := aesDecrypt(decodedPeerPub, a.masterSecret)
+			if err != nil {
+				log.Fatalf("could not decrypt server pub key: %s", err)
+				return
+			}
+
+			a.keyExchange.peerPub = decryptedPub
 			return
 		}
 	}()

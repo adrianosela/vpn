@@ -148,6 +148,9 @@ func (a *App) serveSharedSecret(w http.ResponseWriter, r *http.Request) {
 	if err := a.keyExchange.ComputeSharedSecret(); err != nil {
 		log.Fatalf("could not compute shared secret: %s", err)
 	}
+	b64sharedKey := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.sharedSecret[:]))
+	message := fmt.Sprintf("$ generated shared key: %s", b64sharedKey)
+	a.stateData = fmt.Sprintf("%s<br>%s", a.stateData, message)
 
 	tcpRxChan := make(chan []byte)
 	tcpTxChan := make(chan []byte)
@@ -172,10 +175,6 @@ func (a *App) serveSharedSecret(w http.ResponseWriter, r *http.Request) {
 
 	// open chat on next step
 	a.state = stateChat
-
-	b64sharedKey := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.sharedSecret[:]))
-	message := fmt.Sprintf("$ generated shared key: %s", b64sharedKey)
-	a.stateData = fmt.Sprintf("%s<br>%s", a.stateData, message)
 	a.serveStateStep(w, r)
 }
 

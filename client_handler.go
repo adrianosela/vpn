@@ -85,7 +85,13 @@ func (a *App) clientDialTCP(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Fatalf("could not b64 decode message: %s", err)
 			}
-			a.keyExchange.peerPub = decodedPeerPub
+			// AES decrypt
+			decryptedPub, err := aesDecrypt(decodedPeerPub, a.masterSecret)
+			if err != nil {
+				log.Fatalf("could not decrypt server pub key: %s", err)
+				return
+			}
+			a.keyExchange.peerPub = decryptedPub
 			return
 		}
 	}()
@@ -111,7 +117,13 @@ func (a *App) clientGenerateDHHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) clientSendKeyHandler(w http.ResponseWriter, r *http.Request) {
-	b64pub := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.pub[:]))
+	encryptedPub, err := aesEncrypt(a.keyExchange.pub[:], a.masterSecret)
+	if err != nil {
+		log.Fatalf("could not encrypt client pub key: %s", err)
+		return
+	}
+
+	b64pub := []byte(b64.StdEncoding.EncodeToString(encryptedPub[:]))
 
 	if _, err := a.conn.Write(append(b64pub, '\n')); err != nil {
 		log.Fatalf("could not write key to tcp conn: %s", err)
