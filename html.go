@@ -29,7 +29,7 @@ const clientConfigHTML = `
 				<h2> Configure Server: </h2><br>
             Server Host: <input type="text" name="host"><br>
 						Server Port: <input type="text" name="port"><br>
-            Master Passphrase: <input type="text" name="passphrase">
+            Shared Secret Value: <input type="text" name="passphrase">
             <input type="submit" value="Enter">
         </form>
 </body>
@@ -47,7 +47,7 @@ const serverConfigHTML = `
 			<form action="/app" method="post">
 				<h2> Configure Server: </h2><br>
 				TCP Listener Port: <input type="text" name="port"><br>
-				Master Passphrase: <input type="text" name="passphrase">
+				Shared Secret Value: <input type="text" name="passphrase">
 				<input type="submit" value="Enter">
 			</form>
 </body>
@@ -64,7 +64,7 @@ const messageTemplateHTML = `
 <div id="log"></div>
 	<h4> Messages: </h4> %s <br>
 <form action="/app" method="post">
-	<input type="submit" value="Next">
+	<input type="submit" value="Continue">
 </form>
 </body>
 </html>
