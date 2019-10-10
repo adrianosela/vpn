@@ -17,12 +17,12 @@ const (
 
 func wsConnHandler(conn *websocket.Conn, wsRxChan, wsTxChan chan []byte) {
 	go wsReader(conn, wsRxChan)
-	go wsWriter(conn, wsTxChan)
+	go wsWriter(conn, wsRxChan, wsTxChan)
 }
 
 // the wsReader reads from the websocket connection
 // onto the websocket receive channel
-func wsReader(conn *websocket.Conn, tcpRxChan chan []byte) {
+func wsReader(conn *websocket.Conn, wsRxChan chan []byte) {
 	defer conn.Close()
 	conn.SetReadLimit(maxMessageSize)
 	conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -42,13 +42,13 @@ func wsReader(conn *websocket.Conn, tcpRxChan chan []byte) {
 			log.Printf("WS connection was closed unexpectedly: %s", err)
 			break
 		}
-		tcpRxChan <- []byte(input.Data)
+		wsRxChan <- []byte(input.Data)
 	}
 }
 
 // the wsWriter reads from the websocket transmit channel
 // and writes onto the websocket connection
-func wsWriter(conn *websocket.Conn, wsTxChan chan []byte) {
+func wsWriter(conn *websocket.Conn, wsRxChan, wsTxChan chan []byte) {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
@@ -71,7 +71,9 @@ func wsWriter(conn *websocket.Conn, wsTxChan chan []byte) {
 			n := len(wsTxChan)
 			for i := 0; i < n; i++ {
 				w.Write([]byte("\n"))
-				w.Write(<-wsTxChan)
+				data := <-wsTxChan
+				w.Write(data)
+				wsTxChan <- data // forward to reader chan
 			}
 			if err := w.Close(); err != nil {
 				return
