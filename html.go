@@ -3,70 +3,67 @@ package main
 const modeHTML = `
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<title>VPN - Secure Channel Service</title>
-</head>
-<body>
-<form action="/app" method="post">
-	<h2> Select Mode of Operation: </h2> </br>
-	Server:<input type="radio" name="mode" value="Server"><br>
-	Client:<input type="radio" name="mode" value="Client"><br>
-  <input type="submit" value="Enter">
-</form>
-</body>
+	<head>
+		<title>VPN - Secure Channel Service</title>
+	</head>
+	<body>
+		<h2> Select Mode of Operation: </h2> </br>
+		<form action="/app" method="post">
+			Server:<input type="radio" name="mode" value="Server"><br>
+			Client:<input type="radio" name="mode" value="Client"><br>
+  		<input type="submit" value="Enter">
+		</form>
+	</body>
 </html>
 `
 
 const clientConfigHTML = `
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<title>VPN - Secure Channel Service</title>
-</head>
-<body>
-<div id="log"></div>
-        <form action="/app" method="post">
-				<h2> Configure Server: </h2><br>
-            Server Host: <input type="text" name="host"><br>
-						Server Port: <input type="text" name="port"><br>
-            Shared Secret Value: <input type="text" name="passphrase">
-            <input type="submit" value="Enter">
-        </form>
-</body>
+	<head>
+		<title>VPN - Secure Channel Service</title>
+	</head>
+	<body>
+		<h2> Configure Server: </h2><br>
+  	<form action="/app" method="post">
+    	Server Host: <input type="text" name="host"><br>
+			Server Port: <input type="text" name="port"><br>
+      Shared Secret Value: <input type="text" name="passphrase">
+      <input type="submit" value="Enter">
+    </form>
+	</body>
 </html>
 `
 
 const serverConfigHTML = `
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<title>VPN - Secure Channel Service</title>
-</head>
-<body>
-<div id="log"></div>
-			<form action="/app" method="post">
-				<h2> Configure Server: </h2><br>
-				TCP Listener Port: <input type="text" name="port"><br>
-				Shared Secret Value: <input type="text" name="passphrase">
-				<input type="submit" value="Enter">
-			</form>
-</body>
+	<head>
+		<title>VPN - Secure Channel Service</title>
+	</head>
+	<body>
+		<h2> Configure Server: </h2> <br>
+		<form action="/app" method="post">
+			TCP Listener Port: <input type="text" name="port"><br>
+			Shared Secret Value: <input type="text" name="passphrase">
+			<input type="submit" value="Enter">
+		</form>
+	</body>
 </html>
 `
 
 const messageTemplateHTML = `
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<title>VPN - Secure Channel Service</title>
-</head>
-<body>
-<div id="log"></div>
-	<h4> Messages: </h4> %s <br>
-<form action="/app" method="post">
-	<input type="submit" value="Continue">
-</form>
-</body>
+	<head>
+		<title>VPN - Secure Channel Service</title>
+	</head>
+	<body>
+		<h4> Messages: </h4> %s <br>
+		<form action="/app" method="post">
+			<input type="submit" value="Continue">
+		</form>
+	</body>
 </html>
 `
 
