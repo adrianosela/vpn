@@ -14,10 +14,9 @@ import (
 type App struct {
 	wsRxChan chan []byte
 	wsTxChan chan []byte
-	uiPort   int
-	conn     net.Conn
 
-	vpnHost string
+	uiPort  int
+	conn    net.Conn
 	vpnPort string
 
 	masterSecret string
@@ -26,12 +25,14 @@ type App struct {
 	mode      string
 	state     string
 	stateData string
+
+	// client mode only
+	vpnHost string
 }
 
 const (
-	stateSetMode = "SET MODE"
-	modeServer   = "Server"
-	modeClient   = "Client"
+	modeServer = "server"
+	modeClient = "client"
 )
 
 func newApp(uiPort int) *App {

@@ -56,7 +56,6 @@ func (a *App) serverListenTCP(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}()
-
 	// tell user about it
 	a.state = stateWaitForClient
 	a.stateData = fmt.Sprintf("$ started tcp listener on :%s, waiting for client...", a.vpnPort)
@@ -82,7 +81,6 @@ func (a *App) serverGenerateDHHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *App) serverSendKeyHandler(w http.ResponseWriter, r *http.Request) {
-
 	encryptedPub, err := aesEncrypt(a.keyExchange.pub[:], a.masterSecret)
 	if err != nil {
 		log.Fatalf("could not encrypt server pub key: %s", err)

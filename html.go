@@ -9,8 +9,8 @@ const modeHTML = `
 	<body>
 		<h2> Select Mode of Operation: </h2> </br>
 		<form action="/app" method="post">
-			Server:<input type="radio" name="mode" value="Server"><br>
-			Client:<input type="radio" name="mode" value="Client"><br>
+			Server:<input type="radio" name="mode" value="server"><br>
+			Client:<input type="radio" name="mode" value="client"><br>
   		<input type="submit" value="Enter">
 		</form>
 	</body>

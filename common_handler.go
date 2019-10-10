@@ -9,12 +9,37 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+const (
+	// both
+	stateSetMode            = "SET_MODE"
+	stateSetConfig          = "SET_CONFIG"
+	stateGenerateDH         = "GENERATE_DIFFIE_HELLMAN"
+	stateSendKey            = "SEND_KEY"
+	stateCreateSharedSecret = "ESTABLISH_SHARED_SECRET"
+	stateChat               = "CHAT"
+
+	// server only
+	stateListenTCP        = "LISTEN_TCP"
+	stateWaitForClient    = "WAIT_FOR_CLIENT"
+	stateWaitForClientKey = "WAIT_FOR_CLIENT_KEY"
+
+	// client only
+	stateDialTCP          = "DIAL_TCP"
+	stateWaitForServerKey = "WAIT_FOR_SERVER_KEY"
+)
+
 // serveApp serves data based on application state, not on routes
 func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 	switch a.state {
+
+	// SET_MODE: the application prompts the user for a
+	// mode selection: 'server' or 'client'
 	case stateSetMode:
 		a.modeSelectHandler(w, r)
 		return
+
+	// SET_CONFIG: the application prompts the user
+	// configuration parameters
 	case stateSetConfig:
 		switch a.mode {
 		case modeClient:
@@ -27,6 +52,9 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+
+	// LISTEN_TCP (server mode only) the application starts
+	// a TCP server to communicate with the client
 	case stateListenTCP:
 		if a.mode != modeServer {
 			w.WriteHeader(http.StatusNotFound)
@@ -34,13 +62,10 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 		}
 		a.serverListenTCP(w, r)
 		return
-	case stateDialTCP:
-		if a.mode != modeClient {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-		a.clientDialTCP(w, r)
-		return
+
+	// WAIT_FOR_CLIENT: (server mode only) the application is idle
+	// waiting for another instance of the application running in
+	// client mode to connect to *this* instance's TCP server
 	case stateWaitForClient:
 		if a.mode != modeServer {
 			w.WriteHeader(http.StatusNotFound)
@@ -55,6 +80,20 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 		a.state = stateGenerateDH
 		a.serveStateStep(w, r)
 		return
+
+	// DIAL_TCP: (client mode only) the application connects via TCP
+	// to another instance of the application running in server mode
+	case stateDialTCP:
+		if a.mode != modeClient {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		a.clientDialTCP(w, r)
+		return
+
+	// WAIT_FOR_SERVER_KEY: (client mode only) the application is now connected
+	// to a TCP server, and it is idle waiting for the server to respond with
+	// its public key
 	case stateWaitForServerKey:
 		if a.mode != modeClient {
 			w.WriteHeader(http.StatusNotFound)
@@ -72,6 +111,9 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 		a.state = stateGenerateDH
 		a.serveStateStep(w, r)
 		return
+
+	// GENERATE_DIFFIE_HELLMAN: the application generates an elliptic-curve
+	// based diffie hellman key pair
 	case stateGenerateDH:
 		switch a.mode {
 		case modeClient:
@@ -84,6 +126,9 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+
+	// SEND_KEY: the application sends the public half of the diffie-hellman
+	// key generated to a peer (an instance of the application in opposite mode)
 	case stateSendKey:
 		switch a.mode {
 		case modeClient:
@@ -96,6 +141,10 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
+
+	// WAIT_FOR_CLIENT_KEY: (server mode only) the application has a client,
+	// which was sent the server's public key. The server is now idle, waiting
+	// for the client to respond with its public key
 	case stateWaitForClientKey:
 		if a.mode != modeServer {
 			w.WriteHeader(http.StatusNotFound)
@@ -113,11 +162,25 @@ func (a *App) serveApp(w http.ResponseWriter, r *http.Request) {
 		a.state = stateCreateSharedSecret
 		a.serveStateStep(w, r)
 		return
+
+	// ESTABLISH_SHARED_SECRET: both instances of the application have their
+	// own ecdh private key, and each others' public keys - they can now build
+	// a shared secret key with which to encrypt further communication
 	case stateCreateSharedSecret:
 		a.serveSharedSecret(w, r)
 		return
+
+	// CHAT: the application has established a shared secret with which to
+	// encrypt communication between itself and another instance of the
+	// application in the opposite mode. We serve the websockets upgrade HTML.
 	case stateChat:
 		a.serveChat(w, r)
+		return
+
+	// UNKNOWN STATE - should never happen
+	default:
+		w.WriteHeader(http.StatusNotFound)
+		return
 	}
 }
 
@@ -178,13 +241,13 @@ func (a *App) serveSharedSecret(w http.ResponseWriter, r *http.Request) {
 	a.serveStateStep(w, r)
 }
 
-func (a *App) serveChat(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(chatHTML))
+func (a *App) serveStateStep(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(fmt.Sprintf(messageTemplateHTML, a.stateData)))
 	return
 }
 
-func (a *App) serveStateStep(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(fmt.Sprintf(messageTemplateHTML, a.stateData)))
+func (a *App) serveChat(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(chatHTML))
 	return
 }
 
@@ -194,6 +257,6 @@ func (a *App) serveWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	wsConn.WriteMessage(websocket.TextMessage, []byte("Welcome! Enjoy chatting over a secure channel!"))
+	wsConn.WriteMessage(websocket.TextMessage, []byte("Welcome! Enjoy chatting over a secure channel!\n\n"))
 	go wsConnHandler(wsConn, a.wsRxChan, a.wsTxChan)
 }

@@ -10,28 +10,11 @@ import (
 	"time"
 )
 
-const (
-	stateSetConfig          = "SET CONFIG"
-	stateSetPassphrase      = "SET PASSPHRASE"
-	stateListenTCP          = "LISTEN TCP"
-	stateDialTCP            = "DIAL TCP"
-	stateGenerateDH         = "GENERATE DIFFIE HELLMAN"
-	stateWaitForClient      = "WAITING FOR CLIENT"
-	stateWaitForServerKey   = "WAITING FOR SERVER KEY"
-	stateWaitForClientKey   = "WAITING FOR CLIENT KEY"
-	stateCreateSharedSecret = "CREATE SHARED SECRET"
-	stateSendKey            = "SEND KEY"
-	stateChat               = "CHAT"
-)
-
 func (a *App) clientConfigSetHandler(w http.ResponseWriter, r *http.Request) {
-
 	switch r.Method {
-
 	case http.MethodGet:
 		w.Write([]byte(clientConfigHTML))
 		return
-
 	case http.MethodPost:
 		if err := r.ParseForm(); err != nil {
 			http.Error(w, "could not parse post form", http.StatusBadRequest)
@@ -55,7 +38,6 @@ func (a *App) clientConfigSetHandler(w http.ResponseWriter, r *http.Request) {
 		a.state = stateDialTCP
 		http.Redirect(w, r, fmt.Sprintf("%s:%d/app", "http://localhost", a.uiPort), http.StatusSeeOther)
 		return
-
 	default:
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -95,7 +77,6 @@ func (a *App) clientDialTCP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}()
-
 	a.stateData = fmt.Sprintf("$ established tcp connection with %s:%s ...waiting to receive server's public key", a.vpnHost, a.vpnPort)
 	a.state = stateWaitForServerKey
 	a.serveStateStep(w, r)
@@ -107,7 +88,6 @@ func (a *App) clientGenerateDHHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
 	b64priv := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.priv[:]))
 	b64pub := []byte(b64.StdEncoding.EncodeToString(a.keyExchange.pub[:]))
 	message := fmt.Sprintf("$ generated diffie hellman keys: [priv:%s] [pub:%s]", b64priv, b64pub)
@@ -127,10 +107,8 @@ func (a *App) clientSendKeyHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("could not write key to tcp conn: %s", err)
 		return
 	}
-
 	message := fmt.Sprintf("$ sent encrypted public key to server: ...next: establishing shared secret")
 	a.stateData = fmt.Sprintf("%s<br>%s", a.stateData, message)
-
 	a.state = stateCreateSharedSecret
 	a.serveStateStep(w, r)
 }
