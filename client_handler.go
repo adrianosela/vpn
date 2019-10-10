@@ -122,15 +122,13 @@ func (a *App) clientSendKeyHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("could not encrypt client pub key: %s", err)
 		return
 	}
-
 	b64pub := []byte(b64.StdEncoding.EncodeToString(encryptedPub[:]))
-
 	if _, err := a.conn.Write(append(b64pub, '\n')); err != nil {
 		log.Fatalf("could not write key to tcp conn: %s", err)
 		return
 	}
 
-	message := fmt.Sprintf("$ sent public key to server: [pub:%s] ...next: establishing shared secret", b64pub)
+	message := fmt.Sprintf("$ sent encrypted public key to server: ...next: establishing shared secret")
 	a.stateData = fmt.Sprintf("%s<br>%s", a.stateData, message)
 
 	a.state = stateCreateSharedSecret

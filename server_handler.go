@@ -94,7 +94,7 @@ func (a *App) serverSendKeyHandler(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("could not write key through tcp conn: %s", err)
 		return
 	}
-	message := fmt.Sprintf("$ sent public key to client: [pub:%s] ... waiting for client's public key", b64pub)
+	message := fmt.Sprint("$ sent encrypted public key to client ...waiting for client's public key")
 	a.stateData = fmt.Sprintf("%s<br>%s", a.stateData, message)
 
 	go func() {
