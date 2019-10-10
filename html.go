@@ -24,7 +24,7 @@ const clientConfigHTML = `
 		<title>VPN - Secure Channel Service</title>
 	</head>
 	<body>
-		<h2> Configure Server: </h2><br>
+		<h2> Configure Client: </h2><br>
   	<form action="/app" method="post">
     	Server Host: <input type="text" name="host"><br>
 			Server Port: <input type="text" name="port"><br>
