@@ -73,7 +73,7 @@ func wsWriter(conn *websocket.Conn, wsRxChan, wsTxChan chan []byte) {
 				w.Write([]byte("\n"))
 				data := <-wsTxChan
 				w.Write(data)
-				wsTxChan <- data // forward to reader chan
+				wsRxChan <- data // forward to reader chan
 			}
 			if err := w.Close(); err != nil {
 				return
