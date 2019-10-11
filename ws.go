@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
@@ -16,13 +17,13 @@ const (
 )
 
 func wsConnHandler(conn *websocket.Conn, wsRxChan, wsTxChan chan []byte) {
-	go wsReader(conn, wsRxChan)
+	go wsReader(conn, wsRxChan, wsTxChan)
 	go wsWriter(conn, wsTxChan)
 }
 
 // the wsReader reads from the websocket connection
 // onto the websocket receive channel
-func wsReader(conn *websocket.Conn, tcpRxChan chan []byte) {
+func wsReader(conn *websocket.Conn, wsRxChan, wsTxChan chan []byte) {
 	defer conn.Close()
 	conn.SetReadLimit(maxMessageSize)
 	conn.SetReadDeadline(time.Now().Add(pongWait))
@@ -42,7 +43,10 @@ func wsReader(conn *websocket.Conn, tcpRxChan chan []byte) {
 			log.Printf("WS connection was closed unexpectedly: %s", err)
 			break
 		}
-		tcpRxChan <- []byte(input.Data)
+		wsRxChan <- []byte(input.Data)
+
+		// foward the data back to the client
+		wsTxChan <- []byte(fmt.Sprintf(">> you said: %s", input.Data))
 	}
 }
 
